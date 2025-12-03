@@ -59,7 +59,7 @@ const UserDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-7xl px-4">
         {/* Header */}
         <div className="mb-6">
           <h1 className="mb-2 text-3xl font-bold text-gray-900">User Management</h1>
@@ -85,7 +85,7 @@ const UserDashboard = () => {
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="text-sm text-gray-600">Admins</div>
-            <p className="mt-1 text-2xl font-bold text-red-600">{stats.admins}</p>
+            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.admins}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="text-sm text-gray-600">Active</div>
@@ -298,7 +298,7 @@ const UserDashboard = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
             <h3 className="mb-2 text-lg font-semibold text-gray-900">Confirm Deletion</h3>
             <p className="mb-6 text-sm text-gray-600">
               Are you sure you want to delete user <strong>{getUserById(deleteConfirm)?.full_name}</strong> (
@@ -307,13 +307,13 @@ const UserDashboard = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-colors"
               >
                 Delete
               </button>
