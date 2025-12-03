@@ -1,45 +1,100 @@
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
-import AdminDashboard from './page/Admin/Facility Dashboard'
-import FacilityManagement from './page/Admin/FacilityManagement'
+import { Routes, Route } from 'react-router-dom'
+import LoginPage from './layout/Login/LoginPage'
+import NotFound from './page/Error/NotFound'
+import Forbidden from './page/Error/Forbidden'
+import ServerError from './page/Error/ServerError'
+import Header from './layout/Header/Header'
+import Footer from './layout/Footer/Footer'
+import UserRoutes from './routes/User Route'
+import AdminRoutes from './routes/Admin Route'
 import './App.css'
 
 function App() {
   return (
-    <>
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/facilities" element={<FacilityManagement />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Admin Routes - No Header/Footer */}
+      <Route path="/admin/*" element={<AdminRoutes />} />
+      
+      {/* Login Page - Has Header/Footer */}
+      <Route
+        path="/login"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <LoginPage />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
+      
+      {/* Error Pages - Has Header/Footer */}
+      <Route
+        path="/404"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <NotFound />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
+      <Route
+        path="/403"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <Forbidden />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
+      <Route
+        path="/500"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <ServerError />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
+      
+      {/* User Routes - Has Header/Footer */}
+      <Route
+        path="/*"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <UserRoutes />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
+      
+      {/* Fallback - Has Header/Footer */}
+      <Route
+        path="*"
+        element={
+          <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <main className="flex-1">
+              <NotFound />
+            </main>
+            <Footer />
+          </div>
+        }
+      />
     </Routes>
-    </>
-  )
-}
-
-function Home() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">
-          Hệ thống đặt phòng đa campus
-        </h1>
-        <p className="text-gray-600 mb-8">FPT University - HCM & NVH Campus</p>
-        <div className="space-x-4">
-          <Link
-            to="/admin/dashboard"
-            className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Admin Dashboard
-          </Link>
-          <Link
-            to="/admin/facilities"
-            className="inline-block px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Quản lý cơ sở vật chất
-          </Link>
-        </div>
-      </div>
-    </div>
   )
 }
 
