@@ -29,7 +29,7 @@ const AdminSideBar = () => {
             }
           >
             <LayoutDashboard className="h-5 w-5" />
-            <span>Facility Dashboard</span>
+            <span>Dashboard</span>
           </NavLink>
 
           <NavLink

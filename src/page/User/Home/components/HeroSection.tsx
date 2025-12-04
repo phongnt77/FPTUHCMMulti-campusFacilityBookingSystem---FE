@@ -31,7 +31,7 @@ const HeroSection = () => {
               Sign in to start booking
             </Link>
             <Link
-              to="/user/facilities"
+              to="/facilities"
               className="rounded-full border border-orange-100/70 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold text-orange-50 hover:bg-orange-500/20"
             >
               Browse facilities
