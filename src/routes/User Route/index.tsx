@@ -1,13 +1,30 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import HomePage from '../../page/User/Home'
 import FacilityPage from '../../page/User/Facility'
+import BookingPage from '../../page/User/Booking'
+import ProtectedRoute from '../../components/ProtectedRoute'
 
 const UserRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/home" element={<HomePage />} />
-      <Route path="/facilities" element={<FacilityPage />} />
+      <Route 
+        path="/facilities" 
+        element={
+          <ProtectedRoute allowedRoles={['Student', 'Lecturer']}>
+            <FacilityPage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/booking/:facilityId" 
+        element={
+          <ProtectedRoute allowedRoles={['Student', 'Lecturer']}>
+            <BookingPage />
+          </ProtectedRoute>
+        } 
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
