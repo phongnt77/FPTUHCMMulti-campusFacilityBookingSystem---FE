@@ -18,7 +18,7 @@ const Header = () => {
           <span className="rounded bg-orange-500 px-2 py-1 text-sm font-semibold text-white">FPTU</span>
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold text-gray-800">Multi‑campus Facility Booking</span>
-            <span className="text-xs text-gray-500">HCM & NVH Campus</span>
+            <span className="text-xs text-gray-500">Campus Khu Công Nghệ Cao & NVH</span>
           </div>
         </Link>
 
@@ -27,13 +27,13 @@ const Header = () => {
             to="/"
             className={({ isActive }) => `hover:text-orange-600 ${isActive ? 'text-orange-600' : ''}`}
           >
-            Home
+            Trang chủ
           </NavLink>
           <NavLink
             to="/facilities"
             className={({ isActive }) => `hover:text-orange-600 ${isActive ? 'text-orange-600' : ''}`}
           >
-            Facilities
+            Cơ sở vật chất
           </NavLink>
         </nav>
 
@@ -73,7 +73,7 @@ const Header = () => {
               to="/login"
               className="rounded-lg border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
             >
-              Sign in
+              Đăng nhập
             </Link>
           )}
         </div>

@@ -15,15 +15,15 @@ const HeroSection = () => {
             FPT University HCMC · Multi‑campus
           </p>
           <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-            Plan your study, teaching and events with{' '}
+            Lên kế hoạch học tập, giảng dạy và sự kiện với{' '}
             <span className="underline decoration-orange-200 decoration-4 underline-offset-4">
-              smarter facility booking
+              hệ thống đặt phòng thông minh
             </span>
             .
           </h1>
           <p className="text-sm text-orange-50 sm:text-base">
-            One place for students and lecturers to discover available classrooms, labs and sport areas across HCM &
-            NVH campuses, request bookings and track approvals in real time.
+            Một nơi duy nhất để sinh viên và giảng viên khám phá các phòng học, phòng lab và sân thể thao có sẵn tại các campus HCM &
+            NVH, gửi yêu cầu đặt phòng và theo dõi phê duyệt theo thời gian thực.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -32,7 +32,7 @@ const HeroSection = () => {
                 to="/login"
                 className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-orange-600 shadow-lg shadow-orange-900/30 hover:bg-orange-50"
               >
-                Sign in to start booking
+                Đăng nhập để bắt đầu đặt phòng
               </Link>
             )}
             {isAuthenticated && (
@@ -40,7 +40,7 @@ const HeroSection = () => {
                 to="/facilities"
                 className="rounded-full border border-orange-100/70 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold text-orange-50 hover:bg-orange-500/20"
               >
-                Browse facilities
+                Xem cơ sở vật chất
               </Link>
             )}
           </div>

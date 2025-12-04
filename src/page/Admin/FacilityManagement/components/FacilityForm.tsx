@@ -38,7 +38,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
       <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900">
-            {isEdit ? 'Edit Facility' : 'Add New Facility'}
+            {isEdit ? 'Chỉnh sửa cơ sở vật chất' : 'Thêm cơ sở vật chất mới'}
           </h2>
           <button
             onClick={onClose}
@@ -54,7 +54,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   <Building2 className="mr-1 inline h-4 w-4" />
-                  Facility Name <span className="text-red-500">*</span>
+                  Tên cơ sở vật chất <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -67,7 +67,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Type <span className="text-red-500">*</span>
+                  Loại <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="type"
@@ -75,10 +75,10 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
                   required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
                 >
-                  <option value="">Select type</option>
-                  <option value="meeting-room">Meeting Room</option>
-                  <option value="lab-room">Lab Room</option>
-                  <option value="sports-field">Sports Field</option>
+                  <option value="">Chọn loại</option>
+                  <option value="meeting-room">Phòng họp</option>
+                  <option value="lab-room">Phòng Lab</option>
+                  <option value="sports-field">Sân thể thao</option>
                 </select>
               </div>
             </div>
@@ -95,16 +95,16 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
                   required
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
                 >
-                  <option value="">Select campus</option>
-                  <option value="HCM">HCM Campus</option>
-                  <option value="NVH">NVH Campus</option>
+                  <option value="">Chọn campus</option>
+                  <option value="HCM">Campus HCM</option>
+                  <option value="NVH">Campus NVH</option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
                   <Users className="mr-1 inline h-4 w-4" />
-                  Capacity <span className="text-red-500">*</span>
+                  Sức chứa <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -120,7 +120,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
                 <MapPin className="mr-1 inline h-4 w-4" />
-                Location <span className="text-red-500">*</span>
+                Vị trí <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -135,7 +135,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
             <div>
               <label className="mb-2 block text-sm font-semibold text-gray-700">
                 <FileText className="mr-1 inline h-4 w-4" />
-                Description
+                Mô tả
               </label>
               <textarea
                 name="description"
@@ -146,15 +146,15 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">Amenities</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">Tiện ích</label>
               <input
                 type="text"
                 name="amenities"
                 defaultValue={facility?.amenities?.join(', ') || ''}
-                placeholder="e.g. Projector, WiFi, AC (comma separated)"
+                placeholder="VD: Máy chiếu, WiFi, Điều hòa (phân cách bằng dấu phẩy)"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
               />
-              <p className="mt-1 text-xs text-gray-500">Separate amenities with commas</p>
+              <p className="mt-1 text-xs text-gray-500">Phân cách các tiện ích bằng dấu phẩy</p>
             </div>
 
             <div>
@@ -166,7 +166,7 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
                   defaultChecked={facility?.isActive !== false}
                   className="h-4 w-4 rounded border-gray-300 text-orange-500"
                 />
-                <span className="text-sm font-semibold text-gray-700">Active</span>
+                <span className="text-sm font-semibold text-gray-700">Đang hoạt động</span>
               </label>
             </div>
           </div>
@@ -177,13 +177,13 @@ const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
               onClick={onClose}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
               className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
             >
-              {isEdit ? 'Update Facility' : 'Create Facility'}
+              {isEdit ? 'Cập nhật' : 'Tạo mới'}
             </button>
           </div>
         </form>
