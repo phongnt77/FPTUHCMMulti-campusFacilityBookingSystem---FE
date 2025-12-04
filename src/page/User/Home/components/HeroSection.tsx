@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../../../hooks/useAuth'
 
 const HeroSection = () => {
+  const { isAuthenticated } = useAuth()
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-purple-700 text-white">
       <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
@@ -24,18 +27,22 @@ const HeroSection = () => {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              to="/login"
-              className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-orange-600 shadow-lg shadow-orange-900/30 hover:bg-orange-50"
-            >
-              Sign in to start booking
-            </Link>
-            <Link
-              to="/facilities"
-              className="rounded-full border border-orange-100/70 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold text-orange-50 hover:bg-orange-500/20"
-            >
-              Browse facilities
-            </Link>
+            {!isAuthenticated && (
+              <Link
+                to="/login"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-orange-600 shadow-lg shadow-orange-900/30 hover:bg-orange-50"
+              >
+                Sign in to start booking
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                to="/facilities"
+                className="rounded-full border border-orange-100/70 bg-orange-500/10 px-5 py-2.5 text-sm font-semibold text-orange-50 hover:bg-orange-500/20"
+              >
+                Browse facilities
+              </Link>
+            )}
           </div>
         </div>
       </div>

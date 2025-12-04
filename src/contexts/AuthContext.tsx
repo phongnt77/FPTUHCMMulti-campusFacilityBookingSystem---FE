@@ -1,52 +1,36 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { mockUsers, type User } from '../data/userMockData';
-
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
-  loginWithGoogle: (email: string) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+import { AuthContext, type AuthContextType } from './AuthContext';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check for saved session on mount
-  useEffect(() => {
+// Helper function to get initial user from localStorage
+const getInitialUser = (): User | null => {
+  try {
     const savedUser = localStorage.getItem('auth_user');
     if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser) as User;
-        // Verify user still exists in mock data
-        const validUser = mockUsers.find(u => u.user_id === parsedUser.user_id && u.status === 'Active');
-        if (validUser) {
-          setUser(validUser);
-        } else {
-          localStorage.removeItem('auth_user');
-        }
-      } catch {
+      const parsedUser = JSON.parse(savedUser) as User;
+      // Verify user still exists in mock data
+      const validUser = mockUsers.find(u => u.user_id === parsedUser.user_id && u.status === 'Active');
+      if (validUser) {
+        return validUser;
+      } else {
         localStorage.removeItem('auth_user');
       }
     }
-    setIsLoading(false);
-  }, []);
+  } catch {
+    localStorage.removeItem('auth_user');
+  }
+  return null;
+};
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  // Use lazy initialization to avoid setState in useEffect
+  // getInitialUser is synchronous, so isLoading can be false from start
+  const [user, setUser] = useState<User | null>(getInitialUser);
+  const [isLoading] = useState(false);
 
   // Login with username/password (for K19+ students)
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
