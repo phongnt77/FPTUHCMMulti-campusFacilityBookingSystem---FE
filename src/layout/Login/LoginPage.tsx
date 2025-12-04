@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 type LoginOption = 'account' | 'google'
