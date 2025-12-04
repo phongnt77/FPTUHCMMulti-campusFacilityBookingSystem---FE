@@ -1,33 +1,33 @@
 const steps = [
   {
     id: 1,
-    title: 'Login',
-    description: 'Sign in with your university account (K19+) or FPT email for K18 students and lecturers.',
+    title: 'Đăng nhập',
+    description: 'Đăng nhập bằng tài khoản đại học (K19+) hoặc email FPT cho sinh viên và giảng viên K18.',
   },
   {
     id: 2,
-    title: 'Home & select campus',
-    description: 'Start from the Home Page, choose your campus (HCM or NVH) to see relevant facilities.',
+    title: 'Trang chủ & chọn campus',
+    description: 'Bắt đầu từ trang chủ, chọn campus của bạn (HCM hoặc NVH) để xem các cơ sở vật chất liên quan.',
   },
   {
     id: 3,
-    title: 'Select facility & time',
-    description: 'Browse classrooms, labs, and sport areas with live available time slots.',
+    title: 'Chọn cơ sở vật chất & thời gian',
+    description: 'Duyệt các phòng học, phòng lab và sân thể thao với các khung giờ trống theo thời gian thực.',
   },
   {
     id: 4,
-    title: 'Facility detail & booking',
-    description: 'Review room capacity, equipment and rules, then send a booking request.',
+    title: 'Chi tiết cơ sở & đặt phòng',
+    description: 'Xem xét sức chứa phòng, thiết bị và quy định, sau đó gửi yêu cầu đặt phòng.',
   },
   {
     id: 5,
-    title: 'Admin approval',
-    description: 'Facility admin approves or rejects your request, based on policy and conflicts.',
+    title: 'Phê duyệt của quản trị viên',
+    description: 'Quản trị viên cơ sở vật chất duyệt hoặc từ chối yêu cầu của bạn, dựa trên chính sách và xung đột.',
   },
   {
     id: 6,
-    title: 'Back to Home',
-    description: 'Receive notifications on the Home Page about booking status and upcoming usage.',
+    title: 'Quay lại trang chủ',
+    description: 'Nhận thông báo trên trang chủ về trạng thái đặt phòng và việc sử dụng sắp tới.',
   },
 ]
 
@@ -37,13 +37,13 @@ const FlowSection = () => {
       <div className="mx-auto max-w-6xl px-4">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Booking flow for students & lecturers</h2>
+            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Quy trình đặt phòng cho sinh viên & giảng viên</h2>
             <p className="mt-1 text-sm text-gray-600">
-              From first login to confirmed booking, the system guides you step by step.
+              Từ lần đăng nhập đầu tiên đến đặt phòng được xác nhận, hệ thống hướng dẫn bạn từng bước.
             </p>
           </div>
           <p className="max-w-xs text-xs text-gray-500">
-            This flow is shared for both HCM and NVH campuses, ensuring consistent experience across locations.
+            Quy trình này được chia sẻ cho cả campus HCM và NVH, đảm bảo trải nghiệm nhất quán trên tất cả địa điểm.
           </p>
         </div>
 
@@ -58,7 +58,7 @@ const FlowSection = () => {
                   {step.id}
                 </span>
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-orange-500">
-                  {step.id <= 2 ? 'Start' : step.id <= 4 ? 'Booking' : 'Result'}
+                  {step.id <= 2 ? 'Bắt đầu' : step.id <= 4 ? 'Đặt phòng' : 'Kết quả'}
                 </span>
               </div>
               <h3 className="mb-1 text-sm font-semibold text-gray-900">{step.title}</h3>

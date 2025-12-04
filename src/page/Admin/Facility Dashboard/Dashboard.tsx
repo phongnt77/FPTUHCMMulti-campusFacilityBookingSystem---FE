@@ -69,8 +69,8 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Facility Dashboard</h1>
-          <p className="text-gray-600">Review and manage pending booking requests</p>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Bảng điều khiển cơ sở vật chất</h1>
+          <p className="text-gray-600">Xem xét và quản lý các yêu cầu đặt phòng đang chờ</p>
         </div>
 
         <StatsCards
@@ -83,8 +83,8 @@ const Dashboard = () => {
         {bookings.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-            <h3 className="mt-4 text-lg font-semibold text-gray-900">No Pending Bookings</h3>
-            <p className="mt-2 text-sm text-gray-600">All booking requests have been processed.</p>
+            <h3 className="mt-4 text-lg font-semibold text-gray-900">Không có đặt phòng đang chờ</h3>
+            <p className="mt-2 text-sm text-gray-600">Tất cả yêu cầu đặt phòng đã được xử lý.</p>
           </div>
         ) : (
           <div className="space-y-4">

@@ -62,8 +62,8 @@ const UserDashboard = () => {
       <div className="mx-auto max-w-7xl px-4">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600">Manage and monitor all system users</p>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
+          <p className="text-gray-600">Quản lý và theo dõi tất cả người dùng hệ thống</p>
         </div>
 
         {/* Stats Cards */}
@@ -71,28 +71,28 @@ const UserDashboard = () => {
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="h-4 w-4" />
-              <span>Total Users</span>
+              <span>Tổng người dùng</span>
             </div>
             <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Students</div>
+            <div className="text-sm text-gray-600">Sinh viên</div>
             <p className="mt-1 text-2xl font-bold text-blue-600">{stats.students}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Lecturers</div>
+            <div className="text-sm text-gray-600">Giảng viên</div>
             <p className="mt-1 text-2xl font-bold text-purple-600">{stats.lecturers}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Admins</div>
+            <div className="text-sm text-gray-600">Quản trị viên</div>
             <p className="mt-1 text-2xl font-bold text-orange-600">{stats.admins}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Active</div>
+            <div className="text-sm text-gray-600">Đang hoạt động</div>
             <p className="mt-1 text-2xl font-bold text-green-600">{stats.active}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Inactive</div>
+            <div className="text-sm text-gray-600">Ngừng hoạt động</div>
             <p className="mt-1 text-2xl font-bold text-gray-600">{stats.inactive}</p>
           </div>
         </div>
@@ -105,7 +105,7 @@ const UserDashboard = () => {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name, email, username..."
+                placeholder="Tìm kiếm theo tên, email, tên đăng nhập..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
@@ -120,11 +120,11 @@ const UserDashboard = () => {
                 onChange={(e) => setRoleFilter(e.target.value as User['role'] | 'All')}
                 className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
               >
-                <option value="All">All Roles</option>
-                <option value="Student">Student</option>
-                <option value="Lecturer">Lecturer</option>
-                <option value="Admin">Admin</option>
-                <option value="Facility_Manager">Facility Manager</option>
+                <option value="All">Tất cả vai trò</option>
+                <option value="Student">Sinh viên</option>
+                <option value="Lecturer">Giảng viên</option>
+                <option value="Admin">Quản trị viên</option>
+                <option value="Facility_Manager">Quản lý cơ sở vật chất</option>
               </select>
             </div>
 
@@ -134,9 +134,9 @@ const UserDashboard = () => {
               onChange={(e) => setCampusFilter(e.target.value === 'All' ? 'All' : Number(e.target.value))}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
             >
-              <option value="All">All Campuses</option>
-              <option value="1">HCM Campus</option>
-              <option value="2">NVH Campus</option>
+              <option value="All">Tất cả campus</option>
+              <option value="1">Campus HCM</option>
+              <option value="2">Campus NVH</option>
             </select>
 
             {/* Status Filter */}
@@ -145,9 +145,9 @@ const UserDashboard = () => {
               onChange={(e) => setStatusFilter(e.target.value as 'Active' | 'Inactive' | 'All')}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
             >
-              <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
+              <option value="All">Tất cả trạng thái</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Ngừng hoạt động</option>
             </select>
 
             {/* Clear Filters */}
@@ -162,7 +162,7 @@ const UserDashboard = () => {
                 className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
                 <X className="h-4 w-4" />
-                Clear
+                Xóa bộ lọc
               </button>
             )}
           </div>
@@ -175,31 +175,31 @@ const UserDashboard = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    User ID
+                    Mã người dùng
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    User Info
+                    Thông tin người dùng
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Contact
+                    Liên hệ
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Role
+                    Vai trò
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
                     Campus
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Status
+                    Trạng thái
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Last Login
+                    Đăng nhập lần cuối
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Created At
+                    Ngày tạo
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    Actions
+                    Thao tác
                   </th>
                 </tr>
               </thead>
@@ -207,7 +207,7 @@ const UserDashboard = () => {
                 {filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
-                      No users found matching your filters.
+                      Không tìm thấy người dùng nào phù hợp với bộ lọc của bạn.
                     </td>
                   </tr>
                 ) : (
@@ -274,10 +274,10 @@ const UserDashboard = () => {
                           onClick={() => setDeleteConfirm(user.user_id)}
                           className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                           disabled={user.role === 'Admin'}
-                          title={user.role === 'Admin' ? 'Cannot delete admin users' : 'Delete user'}
+                          title={user.role === 'Admin' ? 'Không thể xóa người dùng quản trị viên' : 'Xóa người dùng'}
                         >
                           <Trash2 className="h-4 w-4" />
-                          Delete
+                          Xóa
                         </button>
                       </td>
                     </tr>
@@ -290,8 +290,8 @@ const UserDashboard = () => {
 
         {/* Results count */}
         <div className="mt-4 text-sm text-gray-600">
-          Showing <span className="font-semibold">{filteredUsers.length}</span> of{' '}
-          <span className="font-semibold">{users.length}</span> users
+          Hiển thị <span className="font-semibold">{filteredUsers.length}</span> trong{' '}
+          <span className="font-semibold">{users.length}</span> người dùng
         </div>
       </div>
 
@@ -299,23 +299,23 @@ const UserDashboard = () => {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
-            <h3 className="mb-2 text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
             <p className="mb-6 text-sm text-gray-600">
-              Are you sure you want to delete user <strong>{getUserById(deleteConfirm)?.full_name}</strong> (
-              {deleteConfirm})? This action cannot be undone.
+              Bạn có chắc chắn muốn xóa người dùng <strong>{getUserById(deleteConfirm)?.full_name}</strong> (
+              {deleteConfirm})? Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                Hủy
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-colors"
               >
-                Delete
+                Xóa
               </button>
             </div>
           </div>

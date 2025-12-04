@@ -9,9 +9,9 @@ const ServerError = () => {
           <ServerCrash className="h-10 w-10 text-red-600" />
         </div>
         <h1 className="mb-3 text-5xl font-bold text-gray-900">500</h1>
-        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Internal Server Error</h2>
+        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Lỗi máy chủ nội bộ</h2>
         <p className="mb-8 max-w-md mx-auto text-gray-600">
-          Something went wrong on our end. We're working to fix the issue. Please try again later.
+          Đã xảy ra lỗi ở phía chúng tôi. Chúng tôi đang làm việc để khắc phục sự cố. Vui lòng thử lại sau.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <button
@@ -19,14 +19,14 @@ const ServerError = () => {
             className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
-            Reload Page
+            Tải lại trang
           </button>
           <Link
             to="/"
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Home className="h-4 w-4" />
-            Go to Home
+            Về trang chủ
           </Link>
         </div>
       </div>

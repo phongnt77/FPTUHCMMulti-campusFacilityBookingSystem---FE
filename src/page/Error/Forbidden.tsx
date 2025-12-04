@@ -9,10 +9,9 @@ const Forbidden = () => {
           <ShieldX className="h-10 w-10 text-red-600" />
         </div>
         <h1 className="mb-3 text-5xl font-bold text-gray-900">403</h1>
-        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Access Forbidden</h2>
+        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Truy cập bị cấm</h2>
         <p className="mb-8 max-w-md mx-auto text-gray-600">
-          You don't have permission to access this resource. Please contact your administrator if you believe this is
-          an error.
+          Bạn không có quyền truy cập tài nguyên này. Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -20,14 +19,14 @@ const Forbidden = () => {
             className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
           >
             <Home className="h-4 w-4" />
-            Go to Home
+            Về trang chủ
           </Link>
           <button
             onClick={() => window.history.back()}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Go Back
+            Quay lại
           </button>
         </div>
       </div>
