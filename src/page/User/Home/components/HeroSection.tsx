@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../../../hooks/useAuth'
+import { useAuthState } from '../../../../hooks/useAuthState'
 
 const HeroSection = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuthState()
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-purple-700 text-white">

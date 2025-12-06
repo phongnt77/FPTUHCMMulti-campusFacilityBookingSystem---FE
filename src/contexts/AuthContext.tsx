@@ -1,102 +1,117 @@
-import React, { useState, type ReactNode } from 'react';
-import { mockUsers, type User } from '../data/userMockData';
+import React, { useState, useEffect, type ReactNode } from 'react';
+import { type User } from '../data/userMockData';
+import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
 import { AuthContext, type AuthContextType } from './AuthContext';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Map roleId từ API sang role name
+const mapRoleIdToRole = (roleId: string): User['role'] => {
+  // Mapping từ roleId trong database sang role trong code
+  // RL0001: Student, RL0002: Lecturer, RL0003: Facility_Admin -> Facility_Manager
+  // Có thể có thêm roleId khác cho Admin (ví dụ: RL0004) nếu cần
+  const roleMap: Record<string, User['role']> = {
+    'RL0001': 'Student',
+    'RL0002': 'Lecturer',
+    'RL0003': 'Facility_Manager', // Facility_Admin trong DB được map sang Facility_Manager
+    // Có thể thêm roleId khác cho Admin nếu có trong database
+    // 'RL0004': 'Admin', // Ví dụ: nếu có roleId riêng cho Admin
+  };
+  return roleMap[roleId] || 'Student';
+};
+
 // Helper function to get initial user from localStorage
 const getInitialUser = (): User | null => {
   try {
+    const token = localStorage.getItem('auth_token');
     const savedUser = localStorage.getItem('auth_user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser) as User;
-      // Verify user still exists in mock data
-      const validUser = mockUsers.find(u => u.user_id === parsedUser.user_id && u.status === 'Active');
-      if (validUser) {
-        return validUser;
-      } else {
-        localStorage.removeItem('auth_user');
-      }
+    
+    if (!token || !savedUser) {
+      return null;
     }
-  } catch {
+
+    const authUser: AuthUser = JSON.parse(savedUser);
+    
+    // Convert AuthUser từ API sang User interface
+    const user: User = {
+      user_id: authUser.userId,
+      email: authUser.email,
+      full_name: authUser.fullName,
+      user_name: authUser.email.split('@')[0], // Extract username from email
+      role: mapRoleIdToRole(authUser.roleId),
+      campus_id: 1, // Default, có thể cần lấy từ API sau
+      status: 'Active',
+      avatar_url: undefined,
+      created_at: new Date().toISOString(),
+    };
+
+    return user;
+  } catch (error) {
+    console.error('Error parsing auth user:', error);
+    // Clear invalid data
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    return null;
   }
-  return null;
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  // Use lazy initialization to avoid setState in useEffect
-  // getInitialUser is synchronous, so isLoading can be false from start
   const [user, setUser] = useState<User | null>(getInitialUser);
   const [isLoading] = useState(false);
 
-  // Login with username/password (for K19+ students)
+  // Listen for storage changes (when login happens in another tab/window)
+  // and custom events (when login happens in same tab)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newUser = getInitialUser();
+      setUser(newUser);
+    };
+
+    const handleLoginSuccess = () => {
+      const newUser = getInitialUser();
+      setUser(newUser);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('auth:loginSuccess', handleLoginSuccess);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth:loginSuccess', handleLoginSuccess);
+    };
+  }, []);
+
+  // Login functions are deprecated - use loginAPI directly in LoginPage
+  // Keeping for backward compatibility but they won't work
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Find user by username (user_name field)
-    const foundUser = mockUsers.find(
-      u => u.user_name.toLowerCase() === username.toLowerCase()
-    );
-
-    if (!foundUser) {
-      return { success: false, message: 'Tài khoản không tồn tại' };
-    }
-
-    if (foundUser.status === 'Inactive') {
-      return { success: false, message: 'Tài khoản đã bị vô hiệu hóa' };
-    }
-
-    // For mock purposes, accept any password (in real app, verify against backend)
-    // Password validation would be: password === 'password123' or check hash
-    if (password.length < 1) {
-      return { success: false, message: 'Vui lòng nhập mật khẩu' };
-    }
-
-    // Save to state and localStorage
-    setUser(foundUser);
-    localStorage.setItem('auth_user', JSON.stringify(foundUser));
-
-    return { success: true, message: 'Đăng nhập thành công!' };
+    console.warn('login() is deprecated. Use loginAPI from LoginPage instead.');
+    return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
 
-  // Login with Google/FPT email (for K18 students & lecturers)
   const loginWithGoogle = async (email: string): Promise<{ success: boolean; message: string }> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Check if email ends with @fpt.edu.vn
-    if (!email.endsWith('@fpt.edu.vn')) {
-      return { success: false, message: 'Chỉ chấp nhận email @fpt.edu.vn' };
-    }
-
-    // Find user by email
-    const foundUser = mockUsers.find(
-      u => u.email.toLowerCase() === email.toLowerCase()
-    );
-
-    if (!foundUser) {
-      return { success: false, message: 'Email không tồn tại trong hệ thống' };
-    }
-
-    if (foundUser.status === 'Inactive') {
-      return { success: false, message: 'Tài khoản đã bị vô hiệu hóa' };
-    }
-
-    // Save to state and localStorage
-    setUser(foundUser);
-    localStorage.setItem('auth_user', JSON.stringify(foundUser));
-
-    return { success: true, message: 'Đăng nhập thành công!' };
+    console.warn('loginWithGoogle() is deprecated. Use loginAPI from LoginPage instead.');
+    return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
 
-  // Logout
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth_user');
+  // Logout - gọi API logout và xóa token/user data
+  const logout = async () => {
+    try {
+      // Gọi API logout trước
+      await logoutAPI();
+    } catch (error) {
+      // Nếu API call thất bại, vẫn xóa token ở client side
+      console.error('Logout API error:', error);
+    } finally {
+      // Luôn xóa user state và localStorage để đảm bảo logout hoàn tất
+      setUser(null);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      
+      // Dispatch event để các component khác biết đã logout
+      window.dispatchEvent(new Event('auth:logoutSuccess'));
+    }
   };
 
   const value: AuthContextType = {

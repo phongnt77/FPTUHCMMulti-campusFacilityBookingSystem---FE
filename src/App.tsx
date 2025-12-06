@@ -7,13 +7,21 @@ import Header from './layout/Header/Header'
 import Footer from './layout/Footer/Footer'
 import UserRoutes from './routes/User Route'
 import AdminRoutes from './routes/Admin Route'
+import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
 function App() {
   return (
     <Routes>
-      {/* Admin Routes - No Header/Footer */}
-      <Route path="/admin/*" element={<AdminRoutes />} />
+      {/* Admin Routes - No Header/Footer - Protected by role */}
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute allowedRoles={['Admin', 'Facility_Manager']}>
+            <AdminRoutes />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Login Page - Has Header/Footer */}
       <Route

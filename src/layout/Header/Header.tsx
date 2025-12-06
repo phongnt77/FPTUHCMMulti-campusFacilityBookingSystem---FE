@@ -1,14 +1,24 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuthState } from '../../hooks/useAuthState'
+import { logoutAPI } from '../../layout/Login/api/loginAPI'
+import { clearAuth } from '../../utils/auth'
 import { LogOut, User } from 'lucide-react'
 
 const Header = () => {
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated } = useAuthState()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
-    navigate('/')
+  const handleLogout = async () => {
+    try {
+      await logoutAPI()
+    } catch (error) {
+      console.error('Logout API error:', error)
+    } finally {
+      // Xóa auth data và dispatch event
+      clearAuth()
+      window.dispatchEvent(new Event('auth:logoutSuccess'))
+      navigate('/')
+    }
   }
 
   return (

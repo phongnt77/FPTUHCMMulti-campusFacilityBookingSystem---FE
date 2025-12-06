@@ -1,7 +1,24 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Building2, Users, LogOut } from 'lucide-react'
+import { logoutAPI } from '../layout/Login/api/loginAPI'
+import { clearAuth } from '../utils/auth'
 
 const AdminSideBar = () => {
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    try {
+      await logoutAPI()
+    } catch (error) {
+      console.error('Logout API error:', error)
+    } finally {
+      // Xóa auth data và dispatch event
+      clearAuth()
+      window.dispatchEvent(new Event('auth:logoutSuccess'))
+      // Redirect về trang chủ
+      navigate('/')
+    }
+  }
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 border-r border-gray-200 bg-white shadow-sm">
       <div className="flex h-full flex-col">
@@ -63,7 +80,10 @@ const AdminSideBar = () => {
 
         {/* Logout */}
         <div className="border-t border-gray-200 p-4">
-          <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-red-600">
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-red-600"
+          >
             <LogOut className="h-5 w-5" />
             <span>Logout</span>
           </button>

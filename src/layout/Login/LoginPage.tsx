@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
+import { GoogleLogin } from '@react-oauth/google'
+import type { CredentialResponse } from '@react-oauth/google'
+import { loginAPI } from './api/loginAPI'
+import { loginWithGoogle } from './api/emailLoginApi'
+import EmailVerificationModal from './components/EmailVerificationModal'
+import ForgotPasswordModal from './components/ForgotPasswordModal'
+import ResetPasswordModal from './components/ResetPasswordModal'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 type LoginOption = 'account' | 'google'
@@ -15,23 +21,30 @@ const LoginPage = () => {
   const [option, setOption] = useState<LoginOption>('account')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [verificationEmail, setVerificationEmail] = useState('')
+  const [pendingIdToken, setPendingIdToken] = useState<string | null>(null)
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false)
+  const [resetPasswordEmail, setResetPasswordEmail] = useState('')
 
-  const { login, loginWithGoogle, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
   // Get the redirect path from location state, or default to /facilities
   const from = (location.state as LocationState)?.from?.pathname || '/facilities'
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
-    navigate(from, { replace: true })
-    return null
-  }
+  // Check if user is already authenticated (has token in localStorage)
+  // Sử dụng useEffect để tránh gọi navigate trong quá trình render
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      navigate(from, { replace: true })
+    }
+  }, [navigate, from])
 
   const handleAccountLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +52,7 @@ const LoginPage = () => {
     setSuccess('')
 
     if (!username.trim()) {
-      setError('Vui lòng nhập tên đăng nhập')
+      setError('Vui lòng nhập email hoặc tên đăng nhập')
       return
     }
 
@@ -49,11 +62,13 @@ const LoginPage = () => {
     }
 
     setLoading(true)
-    const result = await login(username.trim(), password)
+    const result = await loginAPI(username.trim(), password)
     setLoading(false)
 
     if (result.success) {
       setSuccess(result.message)
+      // Dispatch event to notify components to refresh user state
+      window.dispatchEvent(new Event('auth:loginSuccess'))
       setTimeout(() => {
         navigate(from, { replace: true })
       }, 500)
@@ -62,32 +77,88 @@ const LoginPage = () => {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    setError('')
-    setSuccess('')
+  /**
+   * Xử lý khi Google OAuth login thành công
+   * GoogleLogin component sẽ gọi callback này với CredentialResponse chứa credential (id_token)
+   */
+  const handleGoogleLoginSuccess = async (credentialResponse: CredentialResponse) => {
+    setError('');
+    setSuccess('');
 
-    // Simulate Google OAuth popup - in real app, this would open Google OAuth
-    // For demo, we'll use a prompt or predefined email
-    const testEmail = prompt(
-      'Nhập email FPT để đăng nhập (demo):\n\nVí dụ:\n- student1@fpt.edu.vn\n- lecturer1@fpt.edu.vn',
-      'student1@fpt.edu.vn'
-    )
-
-    if (!testEmail) return
-
-    setLoading(true)
-    const result = await loginWithGoogle(testEmail)
-    setLoading(false)
-
-    if (result.success) {
-      setSuccess(result.message)
-      setTimeout(() => {
-        navigate(from, { replace: true })
-      }, 500)
-    } else {
-      setError(result.message)
+    if (!credentialResponse.credential) {
+      setError('Không thể lấy thông tin từ Google. Vui lòng thử lại.');
+      return;
     }
-  }
+
+    try {
+      setLoading(true);
+      const result = await loginWithGoogle(credentialResponse.credential);
+      setLoading(false);
+
+      if (result.success) {
+        // Nếu cần xác thực email
+        if (result.needsVerification && result.email) {
+          setVerificationEmail(result.email);
+          setPendingIdToken(credentialResponse.credential); // Lưu idToken để dùng lại sau khi verify
+          setShowVerificationModal(true);
+          setSuccess(result.message);
+        } 
+        // Nếu đã verify, đăng nhập thành công
+        else if (result.data) {
+          setSuccess(result.message);
+          window.dispatchEvent(new Event('auth:loginSuccess'));
+          setTimeout(() => {
+            navigate(from, { replace: true });
+          }, 500);
+        }
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError('Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.');
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Xử lý khi Google OAuth login thất bại
+   */
+  const handleGoogleLoginError = () => {
+    setError('Đăng nhập bằng Google thất bại. Vui lòng thử lại.');
+  };
+
+  /**
+   * Xử lý sau khi verify email thành công
+   * Gọi lại loginWithGoogle để lấy token sau khi verify
+   */
+  const handleEmailVerified = async () => {
+    if (!pendingIdToken) {
+      setError('Không tìm thấy thông tin đăng nhập. Vui lòng thử lại.');
+      setShowVerificationModal(false);
+      return;
+    }
+
+    setShowVerificationModal(false);
+    setLoading(true);
+    setError('');
+    setSuccess('Email đã được xác thực! Đang đăng nhập...');
+    
+    // Gọi lại loginWithGoogle với idToken đã lưu
+    const result = await loginWithGoogle(pendingIdToken);
+    setLoading(false);
+    setPendingIdToken(null);
+
+    if (result.success && result.data) {
+      setSuccess('Đăng nhập thành công!');
+      window.dispatchEvent(new Event('auth:loginSuccess'));
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 500);
+    } else {
+      setError(result.message || 'Đăng nhập thất bại sau khi xác thực email.');
+    }
+  };
 
   return (
     <main className="flex min-h-[calc(100vh-120px)] items-center justify-center px-4 py-10">
@@ -112,7 +183,7 @@ const LoginPage = () => {
                 option === 'account' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-600'
               }`}
             >
-              Tài khoản đại học (sinh viên K19+)
+              Tài khoản được cấp (sinh viên K19+ và quản trị viên)
             </button>
             <button
               type="button"
@@ -132,7 +203,7 @@ const LoginPage = () => {
           {/* Error Message */}
           {error && (
             <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -140,7 +211,7 @@ const LoginPage = () => {
           {/* Success Message */}
           {success && (
             <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{success}</span>
             </div>
           )}
@@ -149,7 +220,7 @@ const LoginPage = () => {
             <form className="space-y-4" onSubmit={handleAccountLogin}>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-700" htmlFor="username">
-                  Tên đăng nhập
+                  Email/Tên đăng nhập
                 </label>
                 <input
                   id="username"
@@ -176,16 +247,11 @@ const LoginPage = () => {
                 />
               </div>
               <div className="flex items-center justify-between text-xs">
-                <label className="flex items-center gap-2 text-gray-600">
-                  <input 
-                    type="checkbox" 
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-3 w-3 rounded border-gray-300 text-orange-500" 
-                  />
-                  <span>Nhớ thiết bị này</span>
-                </label>
-                <button type="button" className="font-semibold text-orange-600 hover:text-orange-700">
+                <button 
+                  type="button" 
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  className="font-semibold text-orange-600 hover:text-orange-700"
+                >
                   Quên mật khẩu?
                 </button>
               </div>
@@ -200,50 +266,41 @@ const LoginPage = () => {
                     <span>Đang đăng nhập...</span>
                   </>
                 ) : (
-                  'Đăng nhập với tài khoản đại học'
+                  'Đăng nhập với tài khoản được cấp'
                 )}
               </button>
 
-              {/* Demo hint */}
-              <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-                <strong>Demo:</strong> Nhập tên đăng nhập (VD: SE1001, LEC001) và bất kỳ mật khẩu nào để đăng nhập.
-              </div>
             </form>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Sử dụng tài khoản email FPT (<strong>@fpt.edu.vn</strong>) để tiếp tục. Tùy chọn này được
+                Sử dụng tài khoản email FPT (<strong>@fpt.edu.vn hoặc fe.edu.vn</strong>) để tiếp tục. Tùy chọn này được
                 khuyến nghị cho sinh viên K18 và giảng viên.
               </p>
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Đang đăng nhập...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-red-500 text-[10px] font-bold text-white">
-                      G
-                    </span>
-                    <span>Đăng nhập với email FPT</span>
-                  </>
-                )}
-              </button>
+              {loading ? (
+                <div className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Đang đăng nhập...</span>
+                </div>
+              ) : (
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleLoginSuccess}
+                    onError={handleGoogleLoginError}
+                    useOneTap={false}
+                    theme="outline"
+                    size="large"
+                    text="signin_with"
+                    shape="rectangular"
+                    logo_alignment="left"
+                  />
+                </div>
+              )}
               <p className="text-xs text-gray-500">
-                Chúng tôi chỉ chấp nhận tài khoản mà email kết thúc với <strong>@fpt.edu.vn</strong>. Email của bạn được sử dụng để
+                Chúng tôi chỉ chấp nhận tài khoản mà email kết thúc với <strong>@fpt.edu.vn hoặc fe.edu.vn</strong>. Email của bạn được sử dụng để
                 xác thực và thông báo đặt phòng.
               </p>
 
-              {/* Demo hint */}
-              <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-                <strong>Demo:</strong> Nhấp vào nút trên và nhập email (VD: student1@fpt.edu.vn, lecturer1@fpt.edu.vn)
-              </div>
             </div>
           )}
         </section>
@@ -269,16 +326,51 @@ const LoginPage = () => {
             </ul>
           </div>
 
-          <div className="mt-6 rounded-lg bg-white/10 p-4 backdrop-blur">
-            <p className="mb-1 text-sm font-semibold text-white">Tài khoản Demo</p>
-            <ul className="space-y-1">
-              <li>• <strong>Students:</strong> SE1001, SE1002, SE1003</li>
-              <li>• <strong>Lecturers:</strong> LEC001, LEC002, LEC003</li>
-              <li>• <strong>Mật khẩu:</strong> bất kỳ (chế độ demo)</li>
-            </ul>
-          </div>
         </aside>
       </div>
+
+      {/* Email Verification Modal */}
+      {showVerificationModal && verificationEmail && (
+        <EmailVerificationModal
+          email={verificationEmail}
+          onVerified={handleEmailVerified}
+          onClose={() => {
+            setShowVerificationModal(false);
+            setVerificationEmail('');
+          }}
+        />
+      )}
+
+      {/* Forgot Password Modal */}
+      {showForgotPasswordModal && (
+        <ForgotPasswordModal
+          onClose={() => {
+            setShowForgotPasswordModal(false);
+            setResetPasswordEmail('');
+          }}
+          onCodeSent={(email) => {
+            setResetPasswordEmail(email);
+            setShowForgotPasswordModal(false);
+            setShowResetPasswordModal(true);
+          }}
+        />
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && resetPasswordEmail && (
+        <ResetPasswordModal
+          email={resetPasswordEmail}
+          onClose={() => {
+            setShowResetPasswordModal(false);
+            setResetPasswordEmail('');
+          }}
+          onSuccess={() => {
+            setShowResetPasswordModal(false);
+            setResetPasswordEmail('');
+            setSuccess('Đặt lại mật khẩu thành công! Bạn có thể đăng nhập với mật khẩu mới.');
+          }}
+        />
+      )}
     </main>
   )
 }
