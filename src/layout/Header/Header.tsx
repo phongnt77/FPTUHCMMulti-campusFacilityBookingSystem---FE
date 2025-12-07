@@ -1,6 +1,10 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+<<<<<<< Updated upstream
 import { LogOut, User } from 'lucide-react'
+=======
+import { LogOut, User, Calendar } from 'lucide-react'
+>>>>>>> Stashed changes
 
 const Header = () => {
   const { user, isAuthenticated, logout } = useAuth()
@@ -35,6 +39,15 @@ const Header = () => {
           >
             Facilities
           </NavLink>
+          {isAuthenticated && (
+            <NavLink
+              to="/my-bookings"
+              className={({ isActive }) => `flex items-center gap-1 hover:text-orange-600 ${isActive ? 'text-orange-600' : ''}`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Lịch sử đặt</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">

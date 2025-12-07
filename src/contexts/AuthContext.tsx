@@ -1,7 +1,14 @@
+<<<<<<< Updated upstream
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { mockUsers, type User } from '../data/userMockData';
 
 interface AuthContextType {
+=======
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { mockUsers, type User } from '../data/userMockData';
+
+export interface AuthContextType {
+>>>>>>> Stashed changes
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -45,15 +52,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         localStorage.removeItem('auth_user');
       }
     }
+<<<<<<< Updated upstream
     setIsLoading(false);
   }, []);
+=======
+  } catch {
+    localStorage.removeItem('auth_user');
+  }
+  return null;
+};
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const [user, setUser] = useState<User | null>(getInitialUser);
+  const [isLoading] = useState(false);
+>>>>>>> Stashed changes
 
   // Login with username/password (for K19+ students)
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Find user by username (user_name field)
     const foundUser = mockUsers.find(
       u => u.user_name.toLowerCase() === username.toLowerCase()
     );
@@ -66,13 +83,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { success: false, message: 'Tài khoản đã bị vô hiệu hóa' };
     }
 
-    // For mock purposes, accept any password (in real app, verify against backend)
-    // Password validation would be: password === 'password123' or check hash
     if (password.length < 1) {
       return { success: false, message: 'Vui lòng nhập mật khẩu' };
     }
 
-    // Save to state and localStorage
     setUser(foundUser);
     localStorage.setItem('auth_user', JSON.stringify(foundUser));
 
@@ -81,15 +95,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Login with Google/FPT email (for K18 students & lecturers)
   const loginWithGoogle = async (email: string): Promise<{ success: boolean; message: string }> => {
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Check if email ends with @fpt.edu.vn
     if (!email.endsWith('@fpt.edu.vn')) {
       return { success: false, message: 'Chỉ chấp nhận email @fpt.edu.vn' };
     }
 
-    // Find user by email
     const foundUser = mockUsers.find(
       u => u.email.toLowerCase() === email.toLowerCase()
     );
@@ -102,7 +113,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { success: false, message: 'Tài khoản đã bị vô hiệu hóa' };
     }
 
-    // Save to state and localStorage
     setUser(foundUser);
     localStorage.setItem('auth_user', JSON.stringify(foundUser));
 
@@ -130,6 +140,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     </AuthContext.Provider>
   );
 };
+<<<<<<< Updated upstream
 
 
 
+=======
+>>>>>>> Stashed changes
