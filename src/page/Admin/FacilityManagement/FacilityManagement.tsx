@@ -1,305 +1,746 @@
-import { useState, useMemo } from 'react'
-import { Plus, Search, Edit2, Trash2, Building2, Filter, X } from 'lucide-react'
-import { mockFacilities } from '../../../data/adminMockData'
-import type { Facility, FacilityType, Campus } from '../../../types'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2, Search, Filter, X, Tag } from 'lucide-react'
+import type { Facility, FacilityRequest, GetFacilitiesParams } from './api/facilityApi'
+import { getFacilities, createFacility, updateFacility, deleteFacility } from './api/facilityApi'
+import type { FacilityType, FacilityTypeRequest } from './api/facilityTypeApi'
+import { getFacilityTypes, createFacilityType, updateFacilityType } from './api/facilityTypeApi'
+import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
 import FacilityForm from './components/FacilityForm'
+import FacilityTypeForm from './components/FacilityTypeForm'
+import Pagination from '../Facility Dashboard/components/Pagination'
+
+type TabType = 'facilities' | 'facility-types'
 
 const FacilityManagement = () => {
-  const [facilities, setFacilities] = useState<Facility[]>(mockFacilities)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [typeFilter, setTypeFilter] = useState<FacilityType | 'All'>('All')
-  const [campusFilter, setCampusFilter] = useState<Campus | 'All'>('All')
-  const [statusFilter, setStatusFilter] = useState<'Active' | 'Inactive' | 'All'>('All')
-  const [showForm, setShowForm] = useState(false)
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabType>('facilities')
+
+  // ========== FACILITIES STATE ==========
+  const [facilities, setFacilities] = useState<Facility[]>([])
+  const [facilitiesLoading, setFacilitiesLoading] = useState(true)
+  const [facilitiesError, setFacilitiesError] = useState<string | null>(null)
+
+  // Pagination for facilities
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
+
+  // Filters for facilities
+  const [nameFilter, setNameFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'Available' | 'Under_Maintenance' | ''>('')
+  const [typeIdFilter, setTypeIdFilter] = useState('')
+  const [campusIdFilter, setCampusIdFilter] = useState('')
+
+  // Options for filters (campuses and facility types)
+  const [campuses, setCampuses] = useState<Campus[]>([])
+  const [facilityTypes, setFacilityTypes] = useState<FacilityType[]>([])
+
+  // Form states for facilities
+  const [showFacilityForm, setShowFacilityForm] = useState(false)
   const [editingFacility, setEditingFacility] = useState<Facility | null>(null)
+  const [facilityFormLoading, setFacilityFormLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
-  const filteredFacilities = useMemo(() => {
-    return facilities.filter((facility) => {
-      const matchesSearch =
-        facility.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        facility.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        facility.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  // ========== FACILITY TYPES STATE ==========
+  const [facilityTypesList, setFacilityTypesList] = useState<FacilityType[]>([])
+  const [facilityTypesLoading, setFacilityTypesLoading] = useState(true)
+  const [facilityTypesError, setFacilityTypesError] = useState<string | null>(null)
 
-      const matchesType = typeFilter === 'All' || facility.type === typeFilter
-      const matchesCampus = campusFilter === 'All' || facility.campus === campusFilter
-      const matchesStatus = statusFilter === 'All' || (statusFilter === 'Active' ? facility.isActive : !facility.isActive)
+  // Form states for facility types
+  const [showFacilityTypeForm, setShowFacilityTypeForm] = useState(false)
+  const [editingFacilityType, setEditingFacilityType] = useState<FacilityType | null>(null)
+  const [facilityTypeFormLoading, setFacilityTypeFormLoading] = useState(false)
 
-      return matchesSearch && matchesType && matchesCampus && matchesStatus
-    })
-  }, [facilities, searchTerm, typeFilter, campusFilter, statusFilter])
+  // Load campuses and facility types for filters
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const [campusesRes, typesRes] = await Promise.all([
+          getCampuses({ page: 1, limit: 100 }),
+          getFacilityTypes({ page: 1, limit: 100 }),
+        ])
 
-  const handleSave = (facilityData: Partial<Facility>) => {
-    if (editingFacility) {
-      setFacilities(
-        facilities.map((f) => (f.id === editingFacility.id ? { ...f, ...facilityData } : f))
-      )
-    } else {
-      const newFacility: Facility = {
-        id: `f${facilities.length + 1}`,
-        ...facilityData,
-        isActive: facilityData.isActive ?? true
-      } as Facility
-      setFacilities([...facilities, newFacility])
-    }
-    setShowForm(false)
-    setEditingFacility(null)
-  }
+        if (campusesRes.success && campusesRes.data) {
+          setCampuses(campusesRes.data.filter((c) => c.status === 'Active'))
+        }
 
-  const handleEdit = (facility: Facility) => {
-    setEditingFacility(facility)
-    setShowForm(true)
-  }
-
-  const handleDelete = (facilityId: string) => {
-    setFacilities(facilities.filter((f) => f.id !== facilityId))
-    setDeleteConfirm(null)
-  }
-
-  const getTypeBadgeColor = (type: FacilityType) => {
-    switch (type) {
-      case 'meeting-room':
-        return 'bg-purple-100 text-purple-700'
-      case 'lab-room':
-        return 'bg-blue-100 text-blue-700'
-      case 'sports-field':
-        return 'bg-green-100 text-green-700'
-      default:
-        return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  const stats = useMemo(() => {
-    return {
-      total: facilities.length,
-      active: facilities.filter((f) => f.isActive).length,
-      byType: {
-        'meeting-room': facilities.filter((f) => f.type === 'meeting-room').length,
-        'lab-room': facilities.filter((f) => f.type === 'lab-room').length,
-        'sports-field': facilities.filter((f) => f.type === 'sports-field').length
-      },
-      byCampus: {
-        HCM: facilities.filter((f) => f.campus === 'HCM').length,
-        NVH: facilities.filter((f) => f.campus === 'NVH').length
+        if (typesRes.success && typesRes.data) {
+          setFacilityTypes(typesRes.data)
+        }
+      } catch (error) {
+        console.error('Error loading options:', error)
       }
     }
-  }, [facilities])
+
+    loadOptions()
+  }, [])
+
+  // Fetch facilities
+  const fetchFacilities = useCallback(async () => {
+    setFacilitiesLoading(true)
+    setFacilitiesError(null)
+
+    try {
+      const params: GetFacilitiesParams = {
+        page: currentPage,
+        limit: itemsPerPage,
+      }
+
+      if (nameFilter.trim()) {
+        params.name = nameFilter.trim()
+      }
+
+      if (statusFilter) {
+        params.status = statusFilter
+      }
+
+      if (typeIdFilter) {
+        params.typeId = typeIdFilter
+      }
+
+      if (campusIdFilter) {
+        params.campusId = campusIdFilter
+      }
+
+      const response = await getFacilities(params)
+
+      if (response.data) {
+        setFacilities(response.data)
+        if (response.pagination) {
+          setTotalItems(response.pagination.total)
+        } else {
+          setTotalItems(response.data.length)
+        }
+      } else {
+        setFacilitiesError('Không thể tải danh sách facilities')
+        setFacilities([])
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải danh sách facilities'
+      setFacilitiesError(errorMessage)
+      setFacilities([])
+    } finally {
+      setFacilitiesLoading(false)
+    }
+  }, [currentPage, itemsPerPage, nameFilter, statusFilter, typeIdFilter, campusIdFilter])
+
+  // Fetch facility types
+  const fetchFacilityTypes = useCallback(async () => {
+    setFacilityTypesLoading(true)
+    setFacilityTypesError(null)
+
+    try {
+      const response = await getFacilityTypes({ page: 1, limit: 100 })
+
+      if (response.success && response.data) {
+        setFacilityTypesList(response.data)
+      } else {
+        setFacilityTypesError('Không thể tải danh sách facility types')
+        setFacilityTypesList([])
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải danh sách facility types'
+      setFacilityTypesError(errorMessage)
+      setFacilityTypesList([])
+    } finally {
+      setFacilityTypesLoading(false)
+    }
+  }, [])
+
+  // Fetch data when tab changes or dependencies change
+  useEffect(() => {
+    if (activeTab === 'facilities') {
+      fetchFacilities()
+    } else {
+      fetchFacilityTypes()
+    }
+  }, [activeTab, fetchFacilities, fetchFacilityTypes])
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // Handle filter changes - reset to page 1
+  const handleFilterChange = () => {
+    setCurrentPage(1)
+  }
+
+  // Handle save facility
+  const handleSaveFacility = async (facilityData: FacilityRequest) => {
+    setFacilityFormLoading(true)
+
+    try {
+      if (editingFacility) {
+        await updateFacility(editingFacility.facilityId, facilityData, facilityData.status)
+      } else {
+        await createFacility(facilityData)
+      }
+
+      setShowFacilityForm(false)
+      setEditingFacility(null)
+      await fetchFacilities()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi lưu facility'
+      alert(errorMessage)
+      throw err
+    } finally {
+      setFacilityFormLoading(false)
+    }
+  }
+
+  // Handle delete facility
+  const handleDeleteFacility = async (facilityId: string) => {
+    setDeleteLoading(true)
+
+    try {
+      await deleteFacility(facilityId)
+      setDeleteConfirm(null)
+      await fetchFacilities()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi vô hiệu hóa facility'
+      alert(errorMessage)
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  // Handle save facility type
+  const handleSaveFacilityType = async (facilityTypeData: FacilityTypeRequest) => {
+    setFacilityTypeFormLoading(true)
+
+    try {
+      if (editingFacilityType) {
+        await updateFacilityType(editingFacilityType.typeId, facilityTypeData)
+      } else {
+        await createFacilityType(facilityTypeData)
+      }
+
+      setShowFacilityTypeForm(false)
+      setEditingFacilityType(null)
+      await fetchFacilityTypes()
+      // Also refresh facility types for filter dropdown
+      const typesRes = await getFacilityTypes({ page: 1, limit: 100 })
+      if (typesRes.success && typesRes.data) {
+        setFacilityTypes(typesRes.data)
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi lưu facility type'
+      alert(errorMessage)
+      throw err
+    } finally {
+      setFacilityTypeFormLoading(false)
+    }
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat('vi-VN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(date)
+  }
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    return status === 'Available'
+      ? 'bg-green-100 text-green-700'
+      : 'bg-orange-100 text-orange-700'
+  }
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl px-4">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý cơ sở vật chất</h1>
-            <p className="text-gray-600">Quản lý tất cả cơ sở vật chất trên các campus</p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingFacility(null)
-              setShowForm(true)
-            }}
-            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Thêm cơ sở vật chất
-          </button>
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý cơ sở vật chất</h1>
+          <p className="text-gray-600">Quản lý tất cả cơ sở vật chất và loại cơ sở vật chất trong hệ thống</p>
         </div>
 
-        <div className="mb-6 grid gap-4 md:grid-cols-5">
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Building2 className="h-4 w-4" />
-              <span>Tổng số</span>
-            </div>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{stats.total}</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Đang hoạt động</div>
-            <p className="mt-1 text-2xl font-bold text-green-600">{stats.active}</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">HCM</div>
-            <p className="mt-1 text-2xl font-bold text-orange-600">{stats.byCampus.HCM}</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">NVH</div>
-            <p className="mt-1 text-2xl font-bold text-purple-600">{stats.byCampus.NVH}</p>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-gray-600">Phòng họp</div>
-            <p className="mt-1 text-2xl font-bold text-purple-600">{stats.byType['meeting-room']}</p>
+        {/* Tabs */}
+        <div className="mb-6 border-b border-gray-200">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('facilities')}
+              className={`px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'facilities'
+                  ? 'border-b-2 border-orange-500 text-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Building2 className="mr-2 inline h-4 w-4" />
+              Facilities
+            </button>
+            <button
+              onClick={() => setActiveTab('facility-types')}
+              className={`px-4 py-2 text-sm font-semibold transition-colors ${
+                activeTab === 'facility-types'
+                  ? 'border-b-2 border-orange-500 text-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Tag className="mr-2 inline h-4 w-4" />
+              Loại Facility
+            </button>
           </div>
         </div>
 
-        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm cơ sở vật chất..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as FacilityType | 'All')}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-              >
-                <option value="All">Tất cả loại</option>
-                <option value="meeting-room">Phòng họp</option>
-                <option value="lab-room">Phòng Lab</option>
-                <option value="sports-field">Sân thể thao</option>
-              </select>
-            </div>
-
-            <select
-              value={campusFilter}
-              onChange={(e) => setCampusFilter(e.target.value as Campus | 'All')}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-            >
-              <option value="All">Tất cả campus</option>
-              <option value="HCM">Campus HCM</option>
-              <option value="NVH">Campus NVH</option>
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as 'Active' | 'Inactive' | 'All')}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-            >
-              <option value="All">Tất cả trạng thái</option>
-              <option value="Active">Đang hoạt động</option>
-              <option value="Inactive">Ngừng hoạt động</option>
-            </select>
-
-            {(typeFilter !== 'All' || campusFilter !== 'All' || statusFilter !== 'All' || searchTerm) && (
+        {/* FACILITIES TAB */}
+        {activeTab === 'facilities' && (
+          <>
+            {/* Header with Add button */}
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Danh sách Facilities</h2>
               <button
                 onClick={() => {
-                  setTypeFilter('All')
-                  setCampusFilter('All')
-                  setStatusFilter('All')
-                  setSearchTerm('')
+                  setEditingFacility(null)
+                  setShowFacilityForm(true)
                 }}
-                className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
               >
-                <X className="h-4 w-4" />
-                Xóa bộ lọc
+                <Plus className="h-4 w-4" />
+                Thêm Facility
               </button>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredFacilities.map((facility) => (
-            <div
-              key={facility.id}
-              className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div className="mb-3 flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{facility.name}</h3>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getTypeBadgeColor(facility.type)}`}
-                    >
-                      {facility.type.replace('-', ' ')}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-600">Campus {facility.campus}</p>
+            {/* Filters */}
+            <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo tên..."
+                    value={nameFilter}
+                    onChange={(e) => {
+                      setNameFilter(e.target.value)
+                      handleFilterChange()
+                    }}
+                    className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                  />
                 </div>
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                    facility.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {facility.isActive ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                </span>
-              </div>
 
-              <div className="mb-3 space-y-2 text-sm text-gray-600">
-                <p>
-                  <span className="font-semibold">Vị trí:</span> {facility.location}
-                </p>
-                <p>
-                  <span className="font-semibold">Sức chứa:</span> {facility.capacity} người
-                </p>
-                {facility.description && <p className="text-xs">{facility.description}</p>}
-                {facility.amenities && facility.amenities.length > 0 && (
-                  <div>
-                    <p className="font-semibold">Tiện ích:</p>
-                    <p className="text-xs">{facility.amenities.join(', ')}</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value as 'Available' | 'Under_Maintenance' | '')
+                      handleFilterChange()
+                    }}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                  >
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Available">Available</option>
+                    <option value="Under_Maintenance">Under Maintenance</option>
+                  </select>
+                </div>
+
+                <select
+                  value={typeIdFilter}
+                  onChange={(e) => {
+                    setTypeIdFilter(e.target.value)
+                    handleFilterChange()
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                >
+                  <option value="">Tất cả loại</option>
+                  {facilityTypes.map((type) => (
+                    <option key={type.typeId} value={type.typeId}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={campusIdFilter}
+                  onChange={(e) => {
+                    setCampusIdFilter(e.target.value)
+                    handleFilterChange()
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                >
+                  <option value="">Tất cả campus</option>
+                  {campuses.map((campus) => (
+                    <option key={campus.campusId} value={campus.campusId}>
+                      {campus.name}
+                    </option>
+                  ))}
+                </select>
+
+                {(nameFilter || statusFilter || typeIdFilter || campusIdFilter) && (
+                  <button
+                    onClick={() => {
+                      setNameFilter('')
+                      setStatusFilter('')
+                      setTypeIdFilter('')
+                      setCampusIdFilter('')
+                      handleFilterChange()
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <X className="h-4 w-4" />
+                    Xóa bộ lọc
+                  </button>
                 )}
               </div>
+            </div>
 
-              <div className="flex gap-2">
+            {/* Loading State */}
+            {facilitiesLoading && (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                <p className="mt-4 text-sm text-gray-600">Đang tải danh sách facilities...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {!facilitiesLoading && facilitiesError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-800">Lỗi khi tải dữ liệu</h3>
+                    <p className="mt-1 text-sm text-red-600">{facilitiesError}</p>
+                  </div>
+                </div>
                 <button
-                  onClick={() => handleEdit(facility)}
-                  className="flex-1 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition-colors"
+                  onClick={fetchFacilities}
+                  className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
                 >
-                  <Edit2 className="mr-1 inline h-4 w-4" />
-                  Chỉnh sửa
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(facility.id)}
-                  className="flex-1 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
-                >
-                  <Trash2 className="mr-1 inline h-4 w-4" />
-                  Xóa
+                  Thử lại
                 </button>
               </div>
+            )}
+
+            {/* Facilities Table */}
+            {!facilitiesLoading && !facilitiesError && facilities.length > 0 && (
+              <>
+                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Tên Facility
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Loại
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Campus
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Vị trí
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Sức chứa
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Trạng thái
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Thao tác
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {facilities.map((facility) => (
+                          <tr key={facility.facilityId} className="hover:bg-gray-50">
+                            <td className="whitespace-nowrap px-6 py-4">
+                              <div className="flex items-center">
+                                <Building2 className="mr-2 h-5 w-5 text-orange-500" />
+                                <div>
+                                  <div className="text-sm font-semibold text-gray-900">{facility.name}</div>
+                                  <div className="text-xs text-gray-500">ID: {facility.facilityId}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                              {facility.typeName}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                              {facility.campusName}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900">
+                              {facility.floorNumber && facility.roomNumber
+                                ? `Tầng ${facility.floorNumber}, Phòng ${facility.roomNumber}`
+                                : facility.roomNumber || facility.floorNumber || '-'}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                              {facility.capacity}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(
+                                  facility.status
+                                )}`}
+                              >
+                                {facility.status === 'Available' ? 'Available' : 'Under Maintenance'}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingFacility(facility)
+                                    setShowFacilityForm(true)
+                                  }}
+                                  className="rounded-lg bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 transition-colors"
+                                  title="Chỉnh sửa"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirm(facility.facilityId)}
+                                  disabled={facility.status === 'Under_Maintenance'}
+                                  className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={
+                                    facility.status === 'Under_Maintenance'
+                                      ? 'Đã vô hiệu hóa'
+                                      : 'Vô hiệu hóa'
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-6">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={handlePageChange}
+                      totalItems={totalItems}
+                      itemsPerPage={itemsPerPage}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Empty State */}
+            {!facilitiesLoading && !facilitiesError && facilities.length === 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
+                <Building2 className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">Không tìm thấy facility nào</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  {nameFilter || statusFilter || typeIdFilter || campusIdFilter
+                    ? 'Thử điều chỉnh bộ lọc hoặc thêm facility mới.'
+                    : 'Bắt đầu bằng cách thêm facility đầu tiên vào hệ thống.'}
+                </p>
+                <button
+                  onClick={() => {
+                    setEditingFacility(null)
+                    setShowFacilityForm(true)
+                  }}
+                  className="mt-4 flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors mx-auto"
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm Facility
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* FACILITY TYPES TAB */}
+        {activeTab === 'facility-types' && (
+          <>
+            {/* Header with Add button */}
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Danh sách Loại Facility</h2>
+              <button
+                onClick={() => {
+                  setEditingFacilityType(null)
+                  setShowFacilityTypeForm(true)
+                }}
+                className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Thêm Loại Facility
+              </button>
             </div>
-          ))}
-        </div>
 
-        {filteredFacilities.length === 0 && (
-          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
-            <Building2 className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-4 text-lg font-semibold text-gray-900">Không tìm thấy cơ sở vật chất</h3>
-            <p className="mt-2 text-sm text-gray-600">Thử điều chỉnh bộ lọc hoặc thêm cơ sở vật chất mới.</p>
-          </div>
+            {/* Loading State */}
+            {facilityTypesLoading && (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 bg-white p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                <p className="mt-4 text-sm text-gray-600">Đang tải danh sách facility types...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {!facilityTypesLoading && facilityTypesError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-800">Lỗi khi tải dữ liệu</h3>
+                    <p className="mt-1 text-sm text-red-600">{facilityTypesError}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchFacilityTypes}
+                  className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  Thử lại
+                </button>
+              </div>
+            )}
+
+            {/* Facility Types Grid */}
+            {!facilityTypesLoading && !facilityTypesError && facilityTypesList.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {facilityTypesList.map((type) => (
+                  <div
+                    key={type.typeId}
+                    className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="mb-3 flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-5 w-5 text-orange-500" />
+                          <h3 className="text-lg font-semibold text-gray-900">{type.name}</h3>
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">ID: {type.typeId}</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-3 space-y-2 text-sm text-gray-600">
+                      {type.description && <p className="text-xs">{type.description}</p>}
+                      <p>
+                        <span className="font-semibold">Sức chứa mặc định:</span> {type.defaultCapacity} người
+                      </p>
+                      {type.typicalDurationHours > 0 && (
+                        <p>
+                          <span className="font-semibold">Thời lượng điển hình:</span> {type.typicalDurationHours} giờ
+                        </p>
+                      )}
+                      {type.defaultAmenities && (
+                        <div>
+                          <p className="font-semibold">Tiện ích mặc định:</p>
+                          <p className="text-xs">{type.defaultAmenities}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingFacilityType(type)
+                          setShowFacilityTypeForm(true)
+                        }}
+                        className="flex-1 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition-colors"
+                      >
+                        <Edit2 className="mr-1 inline h-4 w-4" />
+                        Chỉnh sửa
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!facilityTypesLoading && !facilityTypesError && facilityTypesList.length === 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
+                <Tag className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-semibold text-gray-900">Chưa có loại facility nào</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Bắt đầu bằng cách thêm loại facility đầu tiên vào hệ thống.
+                </p>
+                <button
+                  onClick={() => {
+                    setEditingFacilityType(null)
+                    setShowFacilityTypeForm(true)
+                  }}
+                  className="mt-4 flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors mx-auto"
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm Loại Facility
+                </button>
+              </div>
+            )}
+          </>
         )}
 
-        {showForm && (
-          <FacilityForm
-            facility={editingFacility}
-            onClose={() => {
-              setShowForm(false)
-              setEditingFacility(null)
-            }}
-            onSave={handleSave}
-          />
-        )}
-
+        {/* Delete Confirmation Modal */}
         {deleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-xl">
-              <h3 className="mb-2 text-lg font-semibold text-gray-900">Xác nhận xóa</h3>
-              <p className="mb-6 text-sm text-gray-600">
-                Bạn có chắc chắn muốn xóa cơ sở vật chất này? Hành động này không thể hoàn tác.
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Vô hiệu hóa Facility</h3>
+                  <p className="text-sm text-gray-600">Bạn có chắc chắn muốn vô hiệu hóa facility này?</p>
+                </div>
+              </div>
+              <p className="mb-6 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+                <strong>Lưu ý:</strong> Đây là thao tác soft delete. Facility sẽ được đánh dấu là "Under Maintenance"
+                nhưng dữ liệu vẫn được giữ lại trong hệ thống.
               </p>
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteConfirm(null)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                  disabled={deleteLoading}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-colors"
+                  onClick={() => handleDeleteFacility(deleteConfirm)}
+                  disabled={deleteLoading}
+                  className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Xóa
+                  {deleteLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Xác nhận vô hiệu hóa
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Facility Form Modal */}
+        {showFacilityForm && (
+          <FacilityForm
+            facility={editingFacility}
+            onClose={() => {
+              setShowFacilityForm(false)
+              setEditingFacility(null)
+            }}
+            onSave={handleSaveFacility}
+            loading={facilityFormLoading}
+          />
+        )}
+
+        {/* Facility Type Form Modal */}
+        {showFacilityTypeForm && (
+          <FacilityTypeForm
+            facilityType={editingFacilityType}
+            onClose={() => {
+              setShowFacilityTypeForm(false)
+              setEditingFacilityType(null)
+            }}
+            onSave={handleSaveFacilityType}
+            loading={facilityTypeFormLoading}
+          />
         )}
       </div>
     </div>
