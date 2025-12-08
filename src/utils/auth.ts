@@ -29,6 +29,7 @@ export const getCurrentUser = (): User | null => {
     console.log('getCurrentUser: AuthUser from localStorage:', authUser);
     
     // Convert AuthUser từ API sang User interface
+    // Note: avatarUrl và phoneNumber có thể được thêm vào authUser sau khi user cập nhật profile
     const user: User = {
       user_id: authUser.userId,
       email: authUser.email,
@@ -37,7 +38,7 @@ export const getCurrentUser = (): User | null => {
       role: mapRoleIdToRole(authUser.roleId),
       campus_id: 1,
       status: 'Active',
-      avatar_url: undefined,
+      avatar_url: (authUser as any).avatarUrl || undefined, // Read from localStorage if available
       created_at: new Date().toISOString(),
     };
 
@@ -96,10 +97,43 @@ export const hasRole = (allowedRoles: User['role'][]): boolean => {
 };
 
 /**
+ * Revoke Google session nếu có
+ */
+export const revokeGoogleSession = (): void => {
+  try {
+    // Kiểm tra xem Google Identity Services có sẵn không
+    if (typeof window.google !== 'undefined' && window.google.accounts) {
+      // Disable auto-select để đảm bảo user phải chọn lại account
+      window.google.accounts.id.disableAutoSelect();
+      // Có thể cần revoke token nếu có
+      // Google Identity Services không có method revoke trực tiếp,
+      // nhưng disableAutoSelect sẽ đảm bảo user phải chọn lại account
+    }
+  } catch (error) {
+    console.warn('Error revoking Google session:', error);
+  }
+};
+
+/**
  * Xóa thông tin đăng nhập khỏi localStorage
  */
 export const clearAuth = (): void => {
+  // Revoke Google session nếu user đăng nhập bằng Google
+  const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
+  if (wasGoogleLogin) {
+    revokeGoogleSession();
+  }
+  
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
+  localStorage.removeItem('is_google_login');
+};
+
+/**
+ * Kiểm tra user có đăng nhập bằng Google không
+ * @returns true nếu user đăng nhập bằng Google, false nếu đăng nhập bằng email/password
+ */
+export const isGoogleLogin = (): boolean => {
+  return localStorage.getItem('is_google_login') === 'true';
 };
 

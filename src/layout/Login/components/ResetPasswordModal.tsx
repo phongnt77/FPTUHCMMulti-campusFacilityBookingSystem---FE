@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Loader2, AlertCircle, CheckCircle2, Lock, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '../../../components/toast';
 import { resetPassword } from '../api/emailLoginApi';
 
 interface ResetPasswordModalProps {
@@ -9,6 +10,8 @@ interface ResetPasswordModalProps {
 }
 
 const ResetPasswordModal = ({ email, onClose, onSuccess }: ResetPasswordModalProps) => {
+  const { showSuccess, showError } = useToast();
+  
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,7 +19,6 @@ const ResetPasswordModal = ({ email, onClose, onSuccess }: ResetPasswordModalPro
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const validatePassword = (password: string): { valid: boolean; message: string } => {
     if (password.length < 6) {
@@ -28,7 +30,6 @@ const ResetPasswordModal = ({ email, onClose, onSuccess }: ResetPasswordModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     // Validate code
     if (!code.trim()) {
@@ -69,12 +70,13 @@ const ResetPasswordModal = ({ email, onClose, onSuccess }: ResetPasswordModalPro
     setLoading(false);
 
     if (result.success) {
-      setSuccess(result.message);
+      showSuccess(result.message);
       setTimeout(() => {
         onSuccess();
       }, 1500);
     } else {
       setError(result.message);
+      showError(result.message);
     }
   };
 
@@ -115,14 +117,6 @@ const ResetPasswordModal = ({ email, onClose, onSuccess }: ResetPasswordModalPro
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {success && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>{success}</span>
           </div>
         )}
 

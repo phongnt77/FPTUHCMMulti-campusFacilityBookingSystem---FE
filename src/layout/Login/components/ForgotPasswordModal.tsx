@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Loader2, AlertCircle, CheckCircle2, Mail, ArrowLeft } from 'lucide-react';
+import { useToast } from '../../../components/toast';
 import { forgotPassword } from '../api/emailLoginApi';
 
 interface ForgotPasswordModalProps {
@@ -8,10 +9,11 @@ interface ForgotPasswordModalProps {
 }
 
 const ForgotPasswordModal = ({ onClose, onCodeSent }: ForgotPasswordModalProps) => {
+  const { showSuccess, showError } = useToast();
+  
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,7 +23,6 @@ const ForgotPasswordModal = ({ onClose, onCodeSent }: ForgotPasswordModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (!email.trim()) {
       setError('Vui lòng nhập email');
@@ -38,12 +39,13 @@ const ForgotPasswordModal = ({ onClose, onCodeSent }: ForgotPasswordModalProps) 
     setLoading(false);
 
     if (result.success) {
-      setSuccess(result.message);
+      showSuccess(result.message);
       setTimeout(() => {
         onCodeSent(email.trim());
       }, 1000);
     } else {
       setError(result.message);
+      showError(result.message);
     }
   };
 
@@ -84,14 +86,6 @@ const ForgotPasswordModal = ({ onClose, onCodeSent }: ForgotPasswordModalProps) 
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
-          </div>
-        )}
-
-        {/* Success Message */}
-        {success && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <span>{success}</span>
           </div>
         )}
 

@@ -98,6 +98,8 @@ export const loginAPI = async (
       // Lưu vào localStorage
       localStorage.setItem('auth_token', authUser.token);
       localStorage.setItem('auth_user', JSON.stringify(authUser));
+      // Xóa flag Google login nếu có (user đăng nhập bằng email/password)
+      localStorage.removeItem('is_google_login');
 
       return {
         success: true,
@@ -172,8 +174,20 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
     // Xử lý response thành công (200)
     if (result.success) {
       // Xóa token và user info khỏi localStorage theo yêu cầu của API
+      // Import clearAuth để revoke Google session nếu cần
+      const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
+      localStorage.removeItem('is_google_login');
+      
+      // Revoke Google session nếu user đăng nhập bằng Google
+      if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
+        try {
+          window.google.accounts.id.disableAutoSelect();
+        } catch (error) {
+          console.warn('Error revoking Google session:', error);
+        }
+      }
 
       return {
         success: true,
@@ -201,8 +215,20 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
         // Nếu là lỗi 401 (Unauthorized), có thể token đã hết hạn
         // Vẫn xóa token và user info để đảm bảo client side clean
         if (error.response.status === 401) {
+          const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_user');
+          localStorage.removeItem('is_google_login');
+          
+          // Revoke Google session nếu user đăng nhập bằng Google
+          if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
+            try {
+              window.google.accounts.id.disableAutoSelect();
+            } catch (error) {
+              console.warn('Error revoking Google session:', error);
+            }
+          }
+          
           return {
             success: false,
             message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
@@ -226,8 +252,20 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
       if (error.request) {
         // Ngay cả khi không kết nối được, vẫn xóa token ở client side
         // để đảm bảo user có thể logout ngay cả khi server không phản hồi
+        const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('is_google_login');
+        
+        // Revoke Google session nếu user đăng nhập bằng Google
+        if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
+          try {
+            window.google.accounts.id.disableAutoSelect();
+          } catch (error) {
+            console.warn('Error revoking Google session:', error);
+          }
+        }
+        
         return {
           success: false,
           message: 'Không thể kết nối đến server. Đã xóa thông tin đăng nhập ở client.',
@@ -238,8 +276,20 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
     // Lỗi khác
     console.error('Logout API error:', error);
     // Vẫn xóa token để đảm bảo client side clean
+    const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
+    localStorage.removeItem('is_google_login');
+    
+    // Revoke Google session nếu user đăng nhập bằng Google
+    if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
+      try {
+        window.google.accounts.id.disableAutoSelect();
+      } catch (error) {
+        console.warn('Error revoking Google session:', error);
+      }
+    }
+    
     return {
       success: false,
       message: 'Đã xảy ra lỗi không xác định. Đã xóa thông tin đăng nhập ở client.',

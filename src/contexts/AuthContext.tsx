@@ -2,6 +2,7 @@ import React, { useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../data/userMockData';
 import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
 import { AuthContext, type AuthContextType } from './AuthContext';
+import { clearAuth } from '../utils/auth';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -105,9 +106,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error('Logout API error:', error);
     } finally {
       // Luôn xóa user state và localStorage để đảm bảo logout hoàn tất
+      // Sử dụng clearAuth để revoke Google session nếu cần
       setUser(null);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
+      clearAuth();
       
       // Dispatch event để các component khác biết đã logout
       window.dispatchEvent(new Event('auth:logoutSuccess'));

@@ -8,10 +8,12 @@ import Footer from './layout/Footer/Footer'
 import UserRoutes from './routes/User Route'
 import AdminRoutes from './routes/Admin Route'
 import ProtectedRoute from './components/ProtectedRoute'
+import { ToastProvider } from './components/ToastProvider'
 import './App.css'
 
 function App() {
   return (
+    <ToastProvider>
     <Routes>
       {/* Admin Routes - No Header/Footer - Protected by role */}
       <Route
@@ -103,6 +105,7 @@ function App() {
         }
       />
     </Routes>
+    </ToastProvider>
   )
 }
 

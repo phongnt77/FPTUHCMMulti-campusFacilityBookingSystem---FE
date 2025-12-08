@@ -5,6 +5,7 @@ import { getFacilities, createFacility, updateFacility, deleteFacility } from '.
 import type { FacilityType, FacilityTypeRequest } from './api/facilityTypeApi'
 import { getFacilityTypes, createFacilityType, updateFacilityType } from './api/facilityTypeApi'
 import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
+import { useToast } from '../../../components/toast'
 import FacilityForm from './components/FacilityForm'
 import FacilityTypeForm from './components/FacilityTypeForm'
 import Pagination from '../Facility Dashboard/components/Pagination'
@@ -12,6 +13,8 @@ import Pagination from '../Facility Dashboard/components/Pagination'
 type TabType = 'facilities' | 'facility-types'
 
 const FacilityManagement = () => {
+  const { showSuccess, showError } = useToast()
+  
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('facilities')
 
@@ -181,10 +184,11 @@ const FacilityManagement = () => {
 
       setShowFacilityForm(false)
       setEditingFacility(null)
+      showSuccess(editingFacility ? 'Cập nhật facility thành công!' : 'Tạo facility mới thành công!')
       await fetchFacilities()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi lưu facility'
-      alert(errorMessage)
+      showError(errorMessage)
       throw err
     } finally {
       setFacilityFormLoading(false)
@@ -198,10 +202,11 @@ const FacilityManagement = () => {
     try {
       await deleteFacility(facilityId)
       setDeleteConfirm(null)
+      showSuccess('Vô hiệu hóa facility thành công!')
       await fetchFacilities()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi vô hiệu hóa facility'
-      alert(errorMessage)
+      showError(errorMessage)
     } finally {
       setDeleteLoading(false)
     }
@@ -220,6 +225,7 @@ const FacilityManagement = () => {
 
       setShowFacilityTypeForm(false)
       setEditingFacilityType(null)
+      showSuccess(editingFacilityType ? 'Cập nhật loại facility thành công!' : 'Tạo loại facility mới thành công!')
       await fetchFacilityTypes()
       // Also refresh facility types for filter dropdown
       const typesRes = await getFacilityTypes({ page: 1, limit: 100 })
@@ -228,7 +234,7 @@ const FacilityManagement = () => {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi lưu facility type'
-      alert(errorMessage)
+      showError(errorMessage)
       throw err
     } finally {
       setFacilityTypeFormLoading(false)

@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2 } from 'lucide-react'
 import type { Campus, CampusRequest, GetCampusesParams } from './api/campusApi'
 import { getCampuses, createCampus, updateCampus, deleteCampus } from './api/campusApi'
+import { useToast } from '../../../components/toast'
 import CampusForm from './components/CampusForm'
 import Pagination from '../Facility Dashboard/components/Pagination'
 
 const CampusManagement = () => {
+  const { showSuccess, showError } = useToast()
+  
   // State cho campuses và pagination
   const [campuses, setCampuses] = useState<Campus[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,10 +88,11 @@ const CampusManagement = () => {
       // Close form and refresh list
       setShowForm(false)
       setEditingCampus(null)
+      showSuccess(editingCampus ? 'Cập nhật campus thành công!' : 'Tạo campus mới thành công!')
       await fetchCampuses()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi lưu campus'
-      alert(errorMessage)
+      showError(errorMessage)
       throw err // Re-throw để form có thể xử lý
     } finally {
       setFormLoading(false)
@@ -108,10 +112,11 @@ const CampusManagement = () => {
     try {
       await deleteCampus(campusId)
       setDeleteConfirm(null)
+      showSuccess('Vô hiệu hóa campus thành công!')
       await fetchCampuses()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi vô hiệu hóa campus'
-      alert(errorMessage)
+      showError(errorMessage)
     } finally {
       setDeleteLoading(false)
     }

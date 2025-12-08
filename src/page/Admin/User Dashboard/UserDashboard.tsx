@@ -4,9 +4,12 @@ import type { User, GetUsersParams } from './api/userApi'
 import { getUsers, deleteUser } from './api/userApi'
 import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
 import { getRoleById, type Role } from './api/roleApi'
+import { useToast } from '../../../components/toast'
 import Pagination from '../Facility Dashboard/components/Pagination'
 
 const UserDashboard = () => {
+  const { showSuccess, showError } = useToast()
+  
   // State cho users và pagination
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -142,10 +145,11 @@ const UserDashboard = () => {
     try {
       await deleteUser(userId)
       setDeleteConfirm(null)
+      showSuccess('Xóa tài khoản thành công!')
       await fetchUsers()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi xóa user'
-      alert(errorMessage)
+      showError(errorMessage)
     } finally {
       setDeleteLoading(false)
     }

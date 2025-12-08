@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { CheckCircle2, Loader2, AlertCircle, Filter } from 'lucide-react'
 import type { AdminBooking, GetBookingsParams } from './api/adminBookingApi'
 import { getAdminBookings, approveBooking, rejectBooking } from './api/adminBookingApi'
+import { useToast } from '../../../components/toast'
 import StatsCards from './components/StatsCards'
 import BookingCard from './components/BookingCard'
 import ActionModal from './components/ActionModal'
@@ -20,6 +21,8 @@ const STATUS_OPTIONS = [
 ] as const
 
 const Dashboard = () => {
+  const { showSuccess, showError } = useToast()
+  
   // State cho bookings và pagination
   const [bookings, setBookings] = useState<AdminBooking[]>([])
   const [loading, setLoading] = useState(true)
@@ -143,11 +146,15 @@ const Dashboard = () => {
       setActionType(null)
       setRejectionReason('')
 
+      // Show success toast
+      showSuccess(actionType === 'approve' ? 'Đã duyệt booking thành công!' : 'Đã từ chối booking thành công!')
+
       // Refresh danh sách bookings
       await fetchBookings()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error performing action:', err)
-      alert(err.message || 'Đã xảy ra lỗi khi thực hiện thao tác')
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi thực hiện thao tác'
+      showError(errorMessage)
     } finally {
       setActionLoading(false)
     }

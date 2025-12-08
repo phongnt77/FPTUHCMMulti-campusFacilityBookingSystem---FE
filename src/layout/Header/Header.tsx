@@ -1,12 +1,32 @@
+import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthState } from '../../hooks/useAuthState'
 import { logoutAPI } from '../../layout/Login/api/loginAPI'
 import { clearAuth } from '../../utils/auth'
-import { LogOut, User } from 'lucide-react'
+import { LogOut, User, ChevronDown } from 'lucide-react'
 
 const Header = () => {
   const { user, isAuthenticated } = useAuthState()
   const navigate = useNavigate()
+  const [showDropdown, setShowDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   const handleLogout = async () => {
     try {
@@ -17,8 +37,14 @@ const Header = () => {
       // Xóa auth data và dispatch event
       clearAuth()
       window.dispatchEvent(new Event('auth:logoutSuccess'))
+      setShowDropdown(false)
       navigate('/')
     }
+  }
+
+  const handleProfileClick = () => {
+    setShowDropdown(false)
+    navigate('/profile')
   }
 
   return (
@@ -49,9 +75,13 @@ const Header = () => {
 
         <div className="flex items-center gap-3">
           {isAuthenticated && user ? (
-            <div className="flex items-center gap-3">
-              {/* User Info */}
-              <div className="flex items-center gap-2">
+            <div className="relative" ref={dropdownRef}>
+              {/* User Icon/Avatar Button */}
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-gray-100 transition-colors"
+                aria-label="User menu"
+              >
                 {user.avatar_url ? (
                   <img 
                     src={user.avatar_url} 
@@ -63,20 +93,30 @@ const Header = () => {
                     <User className="w-4 h-4 text-orange-600" />
                   </div>
                 )}
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-gray-800 leading-tight">{user.full_name}</p>
-                  <p className="text-xs text-gray-500">{user.role}</p>
-                </div>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Đăng xuất</span>
+                <ChevronDown className={`w-4 h-4 text-gray-600 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+                  <div className="py-1">
+                    <button
+                      onClick={handleProfileClick}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      Hồ sơ
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <Link
