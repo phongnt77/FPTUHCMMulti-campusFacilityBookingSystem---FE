@@ -1,10 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-<<<<<<< Updated upstream
-import { LogOut, User } from 'lucide-react'
-=======
 import { LogOut, User, Calendar } from 'lucide-react'
->>>>>>> Stashed changes
 
 const Header = () => {
   const { user, isAuthenticated, logout } = useAuth()
@@ -96,5 +92,3 @@ const Header = () => {
 }
 
 export default Header
-
-

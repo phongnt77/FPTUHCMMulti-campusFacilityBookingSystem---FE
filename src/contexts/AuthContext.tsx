@@ -1,14 +1,7 @@
-<<<<<<< Updated upstream
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { mockUsers, type User } from '../data/userMockData';
-
-interface AuthContextType {
-=======
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { mockUsers, type User } from '../data/userMockData';
 
 export interface AuthContextType {
->>>>>>> Stashed changes
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -31,31 +24,20 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Check for saved session on mount
-  useEffect(() => {
+// Helper function to get initial user from localStorage
+const getInitialUser = (): User | null => {
+  try {
     const savedUser = localStorage.getItem('auth_user');
     if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser) as User;
-        // Verify user still exists in mock data
-        const validUser = mockUsers.find(u => u.user_id === parsedUser.user_id && u.status === 'Active');
-        if (validUser) {
-          setUser(validUser);
-        } else {
-          localStorage.removeItem('auth_user');
-        }
-      } catch {
+      const parsedUser = JSON.parse(savedUser) as User;
+      // Verify user still exists in mock data
+      const validUser = mockUsers.find(u => u.user_id === parsedUser.user_id && u.status === 'Active');
+      if (validUser) {
+        return validUser;
+      } else {
         localStorage.removeItem('auth_user');
       }
     }
-<<<<<<< Updated upstream
-    setIsLoading(false);
-  }, []);
-=======
   } catch {
     localStorage.removeItem('auth_user');
   }
@@ -65,7 +47,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(getInitialUser);
   const [isLoading] = useState(false);
->>>>>>> Stashed changes
 
   // Login with username/password (for K19+ students)
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
@@ -140,9 +121,3 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     </AuthContext.Provider>
   );
 };
-<<<<<<< Updated upstream
-
-
-
-=======
->>>>>>> Stashed changes

@@ -1,8 +1,4 @@
 import { Link } from 'react-router-dom'
-<<<<<<< Updated upstream
-=======
-import { useAuth } from '../../../../contexts/AuthContext'
->>>>>>> Stashed changes
 
 const HeroSection = () => {
   return (
