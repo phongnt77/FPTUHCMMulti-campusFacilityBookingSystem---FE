@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../../../hooks/useAuth'
+import { useAuthState } from '../../../../hooks/useAuthState'
 
 const HeroSection = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuthState()
 
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-purple-700 text-white">
@@ -15,7 +15,7 @@ const HeroSection = () => {
             FPT University HCMC · Multi‑campus
           </p>
           <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-            Lên kế hoạch học tập, giảng dạy và sự kiện với{' '}
+            Lên kế hoạch học tập, giảng dạy với{' '}
             <span className="underline decoration-orange-200 decoration-4 underline-offset-4">
               hệ thống đặt phòng thông minh
             </span>

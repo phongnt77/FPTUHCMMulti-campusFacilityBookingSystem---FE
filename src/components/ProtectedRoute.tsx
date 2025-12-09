@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuthState } from '../hooks/useAuthState';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -8,8 +8,9 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuthState();
   const location = useLocation();
+
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -30,12 +31,30 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   // Check role-based access if allowedRoles is specified
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/403" replace />;
+  if (allowedRoles && user) {
+    // Debug logging để kiểm tra role
+    console.log('ProtectedRoute - User role:', user.role);
+    console.log('ProtectedRoute - Allowed roles:', allowedRoles);
+    console.log('ProtectedRoute - Has access:', allowedRoles.includes(user.role));
+    
+    if (!allowedRoles.includes(user.role)) {
+      console.warn('ProtectedRoute - Access denied. User role:', user.role, 'not in allowed roles:', allowedRoles);
+      
+      // Nếu là Admin hoặc Facility_Manager cố truy cập user routes, redirect về admin dashboard
+      if ((user.role === 'Admin' || user.role === 'Facility_Manager') && 
+          !allowedRoles.includes('Admin') && !allowedRoles.includes('Facility_Manager')) {
+        return <Navigate to="/admin/dashboard" replace />;
+      }
+      
+      // Nếu là Student hoặc Lecturer cố truy cập admin routes, redirect về 403
+      return <Navigate to="/403" replace />;
+    }
   }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
+
+
 
