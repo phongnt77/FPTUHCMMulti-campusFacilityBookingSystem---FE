@@ -63,13 +63,13 @@ const Profile = () => {
 
   const handleProfileUpdate = (updatedProfile: UserProfile) => {
     setProfile(updatedProfile);
-    // Update auth user in localStorage if needed
-    const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    // Update auth user in sessionStorage if needed
+    const authUser = JSON.parse(sessionStorage.getItem('auth_user') || '{}');
     if (authUser) {
       authUser.fullName = updatedProfile.fullName;
       authUser.phoneNumber = updatedProfile.phoneNumber;
       authUser.avatarUrl = updatedProfile.avatarUrl;
-      localStorage.setItem('auth_user', JSON.stringify(authUser));
+      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
       window.dispatchEvent(new Event('auth:loginSuccess')); // Trigger update
     }
   };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, AlertCircle, CheckCircle2, Mail, ArrowLeft } from 'lucide-react';
+import { X, Loader2, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
 import { useToast } from '../../../components/toast';
 import { forgotPassword } from '../api/emailLoginApi';
 
@@ -100,7 +100,7 @@ const ForgotPasswordModal = ({ onClose, onCodeSent }: ForgotPasswordModalProps) 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="your.email@fpt.edu.vn"
+              placeholder="Email của bạn"
               disabled={loading}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100"
             />

@@ -13,7 +13,7 @@ const apiClient = axios.create({
 // Thêm request interceptor để tự động thêm token vào header
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = sessionStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -95,11 +95,11 @@ export const loginAPI = async (
         isVerified: result.data.isVerified,
       };
 
-      // Lưu vào localStorage
-      localStorage.setItem('auth_token', authUser.token);
-      localStorage.setItem('auth_user', JSON.stringify(authUser));
+      // Lưu vào sessionStorage (riêng biệt cho mỗi tab)
+      sessionStorage.setItem('auth_token', authUser.token);
+      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
       // Xóa flag Google login nếu có (user đăng nhập bằng email/password)
-      localStorage.removeItem('is_google_login');
+      sessionStorage.removeItem('is_google_login');
 
       return {
         success: true,
@@ -173,12 +173,12 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
 
     // Xử lý response thành công (200)
     if (result.success) {
-      // Xóa token và user info khỏi localStorage theo yêu cầu của API
+      // Xóa token và user info khỏi sessionStorage theo yêu cầu của API
       // Import clearAuth để revoke Google session nếu cần
-      const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      localStorage.removeItem('is_google_login');
+      const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
+      sessionStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_user');
+      sessionStorage.removeItem('is_google_login');
       
       // Revoke Google session nếu user đăng nhập bằng Google
       if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
@@ -215,10 +215,10 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
         // Nếu là lỗi 401 (Unauthorized), có thể token đã hết hạn
         // Vẫn xóa token và user info để đảm bảo client side clean
         if (error.response.status === 401) {
-          const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          localStorage.removeItem('is_google_login');
+          const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
+          sessionStorage.removeItem('auth_token');
+          sessionStorage.removeItem('auth_user');
+          sessionStorage.removeItem('is_google_login');
           
           // Revoke Google session nếu user đăng nhập bằng Google
           if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
@@ -252,10 +252,10 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
       if (error.request) {
         // Ngay cả khi không kết nối được, vẫn xóa token ở client side
         // để đảm bảo user có thể logout ngay cả khi server không phản hồi
-        const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        localStorage.removeItem('is_google_login');
+        const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('auth_user');
+        sessionStorage.removeItem('is_google_login');
         
         // Revoke Google session nếu user đăng nhập bằng Google
         if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
@@ -276,10 +276,10 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
     // Lỗi khác
     console.error('Logout API error:', error);
     // Vẫn xóa token để đảm bảo client side clean
-    const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('is_google_login');
+    const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
+    sessionStorage.removeItem('is_google_login');
     
     // Revoke Google session nếu user đăng nhập bằng Google
     if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {

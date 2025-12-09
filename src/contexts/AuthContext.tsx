@@ -23,11 +23,11 @@ const mapRoleIdToRole = (roleId: string): User['role'] => {
   return roleMap[roleId] || 'Student';
 };
 
-// Helper function to get initial user from localStorage
+// Helper function to get initial user from sessionStorage (riêng biệt cho mỗi tab)
 const getInitialUser = (): User | null => {
   try {
-    const token = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
+    const token = sessionStorage.getItem('auth_token');
+    const savedUser = sessionStorage.getItem('auth_user');
     
     if (!token || !savedUser) {
       return null;
@@ -52,8 +52,8 @@ const getInitialUser = (): User | null => {
   } catch (error) {
     console.error('Error parsing auth user:', error);
     // Clear invalid data
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
     return null;
   }
 };
@@ -62,24 +62,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(getInitialUser);
   const [isLoading] = useState(false);
 
-  // Listen for storage changes (when login happens in another tab/window)
-  // and custom events (when login happens in same tab)
+  // Listen for custom events (when login/logout happens in same tab)
+  // LƯU Ý: sessionStorage không chia sẻ giữa các tab, nên không cần listen storage event
+  // Mỗi tab có session riêng biệt
   useEffect(() => {
-    const handleStorageChange = () => {
-      const newUser = getInitialUser();
-      setUser(newUser);
-    };
-
     const handleLoginSuccess = () => {
       const newUser = getInitialUser();
       setUser(newUser);
     };
 
-    window.addEventListener('storage', handleStorageChange);
     window.addEventListener('auth:loginSuccess', handleLoginSuccess);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('auth:loginSuccess', handleLoginSuccess);
     };
   }, []);

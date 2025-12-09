@@ -12,13 +12,13 @@ const mapRoleIdToRole = (roleId: string): User['role'] => {
 };
 
 /**
- * Lấy thông tin user từ localStorage
+ * Lấy thông tin user từ sessionStorage (riêng biệt cho mỗi tab)
  * @returns User object hoặc null nếu chưa đăng nhập
  */
 export const getCurrentUser = (): User | null => {
   try {
-    const token = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
+    const token = sessionStorage.getItem('auth_token');
+    const savedUser = sessionStorage.getItem('auth_user');
     
     if (!token || !savedUser) {
       console.log('getCurrentUser: No token or savedUser found');
@@ -26,7 +26,7 @@ export const getCurrentUser = (): User | null => {
     }
 
     const authUser: AuthUser = JSON.parse(savedUser);
-    console.log('getCurrentUser: AuthUser from localStorage:', authUser);
+    console.log('getCurrentUser: AuthUser from sessionStorage:', authUser);
     
     // Convert AuthUser từ API sang User interface
     // Note: avatarUrl và phoneNumber có thể được thêm vào authUser sau khi user cập nhật profile
@@ -38,7 +38,7 @@ export const getCurrentUser = (): User | null => {
       role: mapRoleIdToRole(authUser.roleId),
       campus_id: 1,
       status: 'Active',
-      avatar_url: (authUser as any).avatarUrl || undefined, // Read from localStorage if available
+      avatar_url: (authUser as any).avatarUrl || undefined, // Read from sessionStorage if available
       created_at: new Date().toISOString(),
     };
 
@@ -47,8 +47,8 @@ export const getCurrentUser = (): User | null => {
   } catch (error) {
     console.error('Error parsing auth user:', error);
     // Clear invalid data
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
     return null;
   }
 };
@@ -58,26 +58,26 @@ export const getCurrentUser = (): User | null => {
  * @returns true nếu đã đăng nhập, false nếu chưa
  */
 export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem('auth_token');
-  const authUser = localStorage.getItem('auth_user');
+  const token = sessionStorage.getItem('auth_token');
+  const authUser = sessionStorage.getItem('auth_user');
   return !!(token && authUser);
 };
 
 /**
- * Lấy token từ localStorage
+ * Lấy token từ sessionStorage
  * @returns JWT token hoặc null
  */
 export const getToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+  return sessionStorage.getItem('auth_token');
 };
 
 /**
- * Lấy AuthUser từ localStorage
+ * Lấy AuthUser từ sessionStorage
  * @returns AuthUser object hoặc null
  */
 export const getAuthUser = (): AuthUser | null => {
   try {
-    const savedUser = localStorage.getItem('auth_user');
+    const savedUser = sessionStorage.getItem('auth_user');
     if (!savedUser) return null;
     return JSON.parse(savedUser) as AuthUser;
   } catch {
@@ -115,18 +115,18 @@ export const revokeGoogleSession = (): void => {
 };
 
 /**
- * Xóa thông tin đăng nhập khỏi localStorage
+ * Xóa thông tin đăng nhập khỏi sessionStorage (chỉ ảnh hưởng tab hiện tại)
  */
 export const clearAuth = (): void => {
   // Revoke Google session nếu user đăng nhập bằng Google
-  const wasGoogleLogin = localStorage.getItem('is_google_login') === 'true';
+  const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
   if (wasGoogleLogin) {
     revokeGoogleSession();
   }
   
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('auth_user');
-  localStorage.removeItem('is_google_login');
+  sessionStorage.removeItem('auth_token');
+  sessionStorage.removeItem('auth_user');
+  sessionStorage.removeItem('is_google_login');
 };
 
 /**
@@ -134,6 +134,6 @@ export const clearAuth = (): void => {
  * @returns true nếu user đăng nhập bằng Google, false nếu đăng nhập bằng email/password
  */
 export const isGoogleLogin = (): boolean => {
-  return localStorage.getItem('is_google_login') === 'true';
+  return sessionStorage.getItem('is_google_login') === 'true';
 };
 

@@ -12,7 +12,7 @@ const cards = [
     icon: MapPin,
   },
   {
-    title: 'Tránh xung đột và chuyến đi lãng phí',
+    title: 'Tránh xung đột thời gian',
     description: 'Hệ thống làm nổi bật các khung giờ trống để bạn không đến phòng đã được đặt.',
     icon: Clock,
   },

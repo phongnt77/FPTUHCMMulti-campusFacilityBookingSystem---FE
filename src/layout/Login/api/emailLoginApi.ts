@@ -98,11 +98,11 @@ export const loginWithGoogle = async (
         };
       }
 
-      // Nếu đã verify, lưu vào localStorage và đăng nhập thành công
-      localStorage.setItem('auth_token', authUser.token);
-      localStorage.setItem('auth_user', JSON.stringify(authUser));
+      // Nếu đã verify, lưu vào sessionStorage và đăng nhập thành công
+      sessionStorage.setItem('auth_token', authUser.token);
+      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
       // Lưu flag để biết user đăng nhập bằng Google
-      localStorage.setItem('is_google_login', 'true');
+      sessionStorage.setItem('is_google_login', 'true');
 
       return {
         success: true,
