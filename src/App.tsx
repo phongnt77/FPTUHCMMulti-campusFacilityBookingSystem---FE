@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import LoginPage from './layout/Login/LoginPage'
 import NotFound from './page/Error/NotFound'
 import Forbidden from './page/Error/Forbidden'
@@ -11,7 +12,24 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { ToastProvider } from './components/ToastProvider'
 import './App.css'
 
+// Import Preline
+import 'preline/preline'
+import type { IStaticMethods } from 'preline/preline'
+declare global {
+  interface Window {
+    HSStaticMethods: IStaticMethods
+  }
+}
+
 function App() {
+  const location = useLocation()
+
+  // Initialize Preline on route change
+  useEffect(() => {
+    if (window.HSStaticMethods) {
+      window.HSStaticMethods.autoInit()
+    }
+  }, [location.pathname])
   return (
     <ToastProvider>
     <Routes>

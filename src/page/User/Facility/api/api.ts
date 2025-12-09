@@ -1,5 +1,37 @@
+import { API_BASE_URL, API_ENDPOINTS, apiFetch, buildUrl } from '../../../../services/api.config';
 import type { Facility, Campus, FacilityType } from '../../../../types';
-import { mockFacilities } from '../../../../data/adminMockData';
+
+// Backend response types
+interface CampusResponse {
+  campusId: string;
+  name: string;
+  address: string;
+  phoneNumber: string;
+  email: string;
+  status: string;
+}
+
+interface FacilityTypeResponse {
+  typeId: string;
+  name: string;
+  description: string;
+}
+
+interface FacilityResponse {
+  facilityId: string;
+  name: string;
+  description: string;
+  capacity: number;
+  roomNumber: string;
+  floorNumber: string;
+  campusId: string;
+  campusName: string;
+  typeId: string;
+  typeName: string;
+  status: string;
+  amenities: string;
+  imageUrl?: string;
+}
 
 export interface FacilityFilters {
   campus?: Campus;
@@ -7,57 +39,132 @@ export interface FacilityFilters {
   searchQuery?: string;
 }
 
+// Map backend response to frontend type
+const mapFacilityResponse = (f: FacilityResponse): Facility => ({
+  id: f.facilityId,
+  name: f.name,
+  campus: (f.campusName?.includes('NVH') || f.campusName?.includes('Nhà Văn Hóa') || f.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
+  type: mapFacilityType(f.typeName),
+  capacity: f.capacity,
+  location: `${f.roomNumber}, Tầng ${f.floorNumber}`,
+  amenities: f.amenities ? f.amenities.split(',').map(a => a.trim()) : [],
+  imageUrl: f.imageUrl || '/images/default-facility.jpg',
+  isActive: f.status === 'Available',
+  description: f.description,
+});
+
+const mapFacilityType = (typeName: string): FacilityType => {
+  const typeMap: Record<string, FacilityType> = {
+    'Classroom': 'Classroom',
+    'Meeting Room': 'Meeting Room',
+    'Computer Lab': 'Laboratory',
+    'Sports Court': 'Sport Facility',
+    'Auditorium': 'Auditorium',
+    'Laboratory': 'Laboratory',
+    'Sport Facility': 'Sport Facility',
+    'Library': 'Library',
+  };
+  return typeMap[typeName] || 'Classroom';
+};
+
 export const userFacilityApi = {
-  // Get all available facilities for booking (only active ones)
+  // Get all available facilities for booking - API ONLY
   getAvailableFacilities: async (filters?: FacilityFilters): Promise<Facility[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let filtered = mockFacilities.filter(f => f.isActive);
+    try {
+      const params: Record<string, string | number | undefined> = {
+        page: 1,
+        limit: 100,
+      };
+      
+      if (filters?.searchQuery) {
+        params.name = filters.searchQuery;
+      }
+      
+      const url = buildUrl(API_ENDPOINTS.FACILITY.GET_ALL, params);
+      console.log('Fetching facilities from:', url);
+      
+      const response = await apiFetch<FacilityResponse[]>(url);
+      console.log('Facilities response:', response);
+      
+      if (response.success && response.data) {
+        // Filter only Available facilities on client-side
+        let facilities = response.data
+          .filter(f => f.status === 'Available')
+          .map(mapFacilityResponse);
         
+        // Apply client-side filters
         if (filters?.campus) {
-          filtered = filtered.filter(f => f.campus === filters.campus);
+          facilities = facilities.filter(f => f.campus === filters.campus);
         }
         
         if (filters?.type) {
-          filtered = filtered.filter(f => f.type === filters.type);
+          facilities = facilities.filter(f => f.type === filters.type);
         }
         
-        if (filters?.searchQuery) {
-          const query = filters.searchQuery.toLowerCase();
-          filtered = filtered.filter(f => 
-            f.name.toLowerCase().includes(query) ||
-            f.location.toLowerCase().includes(query) ||
-            f.description?.toLowerCase().includes(query)
-          );
-        }
-        
-        resolve(filtered);
-      }, 300);
-    });
+        return facilities;
+      }
+      
+      console.error('API Error:', response.error);
+      return [];
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      return [];
+    }
   },
 
-  // Get facility by ID
+  // Get facility by ID - API ONLY
   getFacilityById: async (id: string): Promise<Facility | null> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const facility = mockFacilities.find(f => f.id === id && f.isActive);
-        resolve(facility || null);
-      }, 300);
-    });
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.FACILITY.GET_BY_ID(id)}`;
+      const response = await apiFetch<FacilityResponse>(url);
+      
+      if (response.success && response.data) {
+        return mapFacilityResponse(response.data);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching facility:', error);
+      return null;
+    }
   },
 
-  // Get facilities count by campus
+  // Get all campuses - API ONLY
+  getCampuses: async (): Promise<CampusResponse[]> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.CAMPUS.GET_ALL}`;
+      const response = await apiFetch<CampusResponse[]>(url);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching campuses:', error);
+      return [];
+    }
+  },
+
+  // Get facilities count by campus - API ONLY
   getFacilitiesCountByCampus: async (): Promise<{ HCM: number; NVH: number }> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const activeFacilities = mockFacilities.filter(f => f.isActive);
-        resolve({
-          HCM: activeFacilities.filter(f => f.campus === 'HCM').length,
-          NVH: activeFacilities.filter(f => f.campus === 'NVH').length,
-        });
-      }, 200);
-    });
+    try {
+      const url = buildUrl(API_ENDPOINTS.FACILITY.GET_ALL, { limit: 1000 });
+      const response = await apiFetch<FacilityResponse[]>(url);
+      
+      if (response.success && response.data) {
+        // Filter only Available facilities
+        const facilities = response.data.filter(f => f.status === 'Available');
+        return {
+          HCM: facilities.filter(f => !f.campusName?.includes('NVH') && !f.campusName?.includes('Nhà Văn Hóa') && !f.campusName?.includes('Sinh Viên')).length,
+          NVH: facilities.filter(f => f.campusName?.includes('NVH') || f.campusName?.includes('Nhà Văn Hóa') || f.campusName?.includes('Sinh Viên')).length,
+        };
+      }
+      
+      return { HCM: 0, NVH: 0 };
+    } catch (error) {
+      console.error('Error fetching facility count:', error);
+      return { HCM: 0, NVH: 0 };
+    }
   }
 };
-
-

@@ -7,7 +7,7 @@ export interface User {
   full_name: string; // VARCHAR(100) NOT NULL
   phone_number?: string; // VARCHAR(20) Optional
   user_name: string; // VARCHAR(100) NOT NULL UNIQUE
-  role: 'Student' | 'Lecturer' | 'Admin' | 'Facility_Manager'; // ENUM NOT NULL
+  role: 'Student' | 'Lecturer' | 'Admin' | 'Facility_Admin' | 'Facility_Manager'; // ENUM NOT NULL
   campus_id: number; // INT NOT NULL FK
   status: 'Active' | 'Inactive'; // ENUM NOT NULL Default='Active'
   avatar_url?: string; // VARCHAR(255) Optional
@@ -17,28 +17,28 @@ export interface User {
 
 export const mockUsers: User[] = [
   {
-    user_id: 'U0001',
-    email: 'student1@fpt.edu.vn',
-    full_name: 'Nguyễn Văn An',
+    user_id: 'U00001',
+    email: 'student@fpt.edu.vn',
+    full_name: 'Nguyễn Văn A',
     phone_number: '0912345678',
-    user_name: 'SE1001',
+    user_name: 'student1',
     role: 'Student',
     campus_id: 1, // HCM
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SE1001',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=student1',
     last_login: '2025-01-15 09:30:00',
     created_at: '2024-09-01 08:00:00'
   },
   {
-    user_id: 'U0002',
+    user_id: 'U00004',
     email: 'student2@fpt.edu.vn',
-    full_name: 'Trần Thị Bình',
+    full_name: 'Lê Văn C',
     phone_number: '0923456789',
-    user_name: 'SE1002',
+    user_name: 'student2',
     role: 'Student',
     campus_id: 1,
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SE1002',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=student2',
     last_login: '2025-01-14 14:20:00',
     created_at: '2024-09-01 08:00:00'
   },
@@ -46,50 +46,50 @@ export const mockUsers: User[] = [
     user_id: 'U0003',
     email: 'student3@fpt.edu.vn',
     full_name: 'Lê Văn Cường',
-    user_name: 'SE1003',
+    user_name: 'student3',
     role: 'Student',
     campus_id: 2, // NVH
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SE1003',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=student3',
     last_login: '2025-01-13 16:45:00',
     created_at: '2024-09-01 08:00:00'
   },
   {
-    user_id: 'U0004',
-    email: 'lecturer1@fpt.edu.vn',
-    full_name: 'Phạm Thị Dung',
+    user_id: 'U00002',
+    email: 'lecturer@fe.edu.vn',
+    full_name: 'Trần Thị B',
     phone_number: '0934567890',
-    user_name: 'LEC001',
+    user_name: 'lecturer1',
     role: 'Lecturer',
     campus_id: 1,
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LEC001',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lecturer1',
     last_login: '2025-01-15 10:15:00',
     created_at: '2024-08-15 10:00:00'
   },
   {
-    user_id: 'U0005',
-    email: 'lecturer2@fpt.edu.vn',
-    full_name: 'Hoàng Văn Em',
+    user_id: 'U00005',
+    email: 'lecturer2@fe.edu.vn',
+    full_name: 'Phạm Thị D',
     phone_number: '0945678901',
-    user_name: 'LEC002',
+    user_name: 'lecturer2',
     role: 'Lecturer',
     campus_id: 2,
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LEC002',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lecturer2',
     last_login: '2025-01-14 11:30:00',
     created_at: '2024-08-15 10:00:00'
   },
   {
-    user_id: 'U0006',
-    email: 'admin1@fpt.edu.vn',
-    full_name: 'Vũ Thị Phương',
+    user_id: 'U00003',
+    email: 'admin@fpt.edu.vn',
+    full_name: 'Admin System',
     phone_number: '0956789012',
-    user_name: 'ADM001',
-    role: 'Admin',
+    user_name: 'admin',
+    role: 'Facility_Admin',
     campus_id: 1,
     status: 'Active',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ADM001',
+    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
     last_login: '2025-01-15 08:00:00',
     created_at: '2024-07-01 08:00:00'
   },

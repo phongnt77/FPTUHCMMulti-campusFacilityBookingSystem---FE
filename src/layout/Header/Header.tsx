@@ -71,6 +71,15 @@ const Header = () => {
           >
             Cơ sở vật chất
           </NavLink>
+          {isAuthenticated && (
+            <NavLink
+              to="/my-bookings"
+              className={({ isActive }) => `flex items-center gap-1 hover:text-orange-600 ${isActive ? 'text-orange-600' : ''}`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Lịch sử đặt</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
@@ -133,5 +142,3 @@ const Header = () => {
 }
 
 export default Header
-
-
