@@ -8,6 +8,8 @@ import Header from './layout/Header/Header'
 import Footer from './layout/Footer/Footer'
 import UserRoutes from './routes/User Route'
 import AdminRoutes from './routes/Admin Route'
+import ProtectedRoute from './components/ProtectedRoute'
+import { ToastProvider } from './components/ToastProvider'
 import './App.css'
 
 // Import Preline
@@ -29,9 +31,17 @@ function App() {
     }
   }, [location.pathname])
   return (
+    <ToastProvider>
     <Routes>
-      {/* Admin Routes - No Header/Footer */}
-      <Route path="/admin/*" element={<AdminRoutes />} />
+      {/* Admin Routes - No Header/Footer - Protected by role */}
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute allowedRoles={['Admin', 'Facility_Manager']}>
+            <AdminRoutes />
+          </ProtectedRoute>
+        }
+      />
       
       {/* Login Page - Has Header/Footer */}
       <Route
@@ -113,6 +123,7 @@ function App() {
         }
       />
     </Routes>
+    </ToastProvider>
   )
 }
 
