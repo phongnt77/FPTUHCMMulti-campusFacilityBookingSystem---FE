@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminDashboard from '../../page/Admin/Facility Dashboard'
 import FacilityManagement from '../../page/Admin/FacilityManagement'
 import UserDashboard from '../../page/Admin/User Dashboard'
+import CampusManagement from '../../page/Admin/CampusManagement'
 import AdminSideBar from '../../components/adminSideBar'
 
 const AdminRoutes = () => {
@@ -12,6 +13,7 @@ const AdminRoutes = () => {
         <Routes>
           <Route path="/dashboard" element={<AdminDashboard />} />
           <Route path="/facilities" element={<FacilityManagement />} />
+          <Route path="/campuses" element={<CampusManagement />} />
           <Route path="/users" element={<UserDashboard />} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>

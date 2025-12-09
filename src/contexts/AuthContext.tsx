@@ -1,190 +1,111 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import { API_BASE_URL, API_ENDPOINTS, apiFetch } from '../services/api.config';
-
-export interface User {
-  user_id: string;
-  user_name: string;
-  full_name: string;
-  email: string;
-  role: 'Student' | 'Lecturer' | 'Admin' | 'Facility_Admin' | 'Facility_Manager';
-  role_id: string;
-  status: 'Active' | 'Inactive';
-  avatar_url?: string;
-  phone_number?: string;
-}
-
-export interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
-  loginWithGoogle: (email: string) => Promise<{ success: boolean; message: string }>;
-  logout: () => void;
-}
-
-// Backend auth response type - matches actual API response
-interface AuthResponse {
-  token: string;
-  userId: string;
-  email: string;
-  fullName: string;
-  roleId: string;
-  isVerified: boolean;
-  userName?: string;
-  avatarUrl?: string;
-  phoneNumber?: string;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+import React, { useState, useEffect, type ReactNode } from 'react';
+import { type User } from '../data/userMockData';
+import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
+import { AuthContext, type AuthContextType } from './AuthContext';
+import { clearAuth } from '../utils/auth';
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-// Map role ID to role name
+// Map roleId từ API sang role name
 const mapRoleIdToRole = (roleId: string): User['role'] => {
+  // Mapping từ roleId trong database sang role trong code
+  // RL0001: Student, RL0002: Lecturer, RL0003: Facility_Admin -> Facility_Manager
+  // Có thể có thêm roleId khác cho Admin (ví dụ: RL0004) nếu cần
   const roleMap: Record<string, User['role']> = {
     'RL0001': 'Student',
     'RL0002': 'Lecturer',
-    'RL0003': 'Admin',
-    'RL0004': 'Facility_Admin',
-    'RL0005': 'Facility_Manager',
+    'RL0003': 'Facility_Manager', // Facility_Admin trong DB được map sang Facility_Manager
+    // Có thể thêm roleId khác cho Admin nếu có trong database
+    // 'RL0004': 'Admin', // Ví dụ: nếu có roleId riêng cho Admin
   };
   return roleMap[roleId] || 'Student';
 };
 
-// Map backend response to frontend User type
-const mapBackendUser = (data: AuthResponse): User => ({
-  user_id: data.userId,
-  user_name: data.userName || data.email.split('@')[0],
-  full_name: data.fullName,
-  email: data.email,
-  role: mapRoleIdToRole(data.roleId),
-  role_id: data.roleId,
-  status: 'Active',
-  avatar_url: data.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.fullName)}&background=random`,
-  phone_number: data.phoneNumber,
-});
-
-// Helper function to get initial user from localStorage
+// Helper function to get initial user from sessionStorage (riêng biệt cho mỗi tab)
 const getInitialUser = (): User | null => {
   try {
-    const savedUser = localStorage.getItem('auth_user');
-    if (savedUser) {
-      return JSON.parse(savedUser) as User;
+    const token = sessionStorage.getItem('auth_token');
+    const savedUser = sessionStorage.getItem('auth_user');
+    
+    if (!token || !savedUser) {
+      return null;
     }
-  } catch {
-    localStorage.removeItem('auth_user');
-    localStorage.removeItem('authToken');
+
+    const authUser: AuthUser = JSON.parse(savedUser);
+    
+    // Convert AuthUser từ API sang User interface
+    const user: User = {
+      user_id: authUser.userId,
+      email: authUser.email,
+      full_name: authUser.fullName,
+      user_name: authUser.email.split('@')[0], // Extract username from email
+      role: mapRoleIdToRole(authUser.roleId),
+      campus_id: 1, // Default, có thể cần lấy từ API sau
+      status: 'Active',
+      avatar_url: undefined,
+      created_at: new Date().toISOString(),
+    };
+
+    return user;
+  } catch (error) {
+    console.error('Error parsing auth user:', error);
+    // Clear invalid data
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
+    return null;
   }
-  return null;
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(getInitialUser);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
-  // Login with username/password - API ONLY
-  const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
+  // Listen for custom events (when login/logout happens in same tab)
+  // LƯU Ý: sessionStorage không chia sẻ giữa các tab, nên không cần listen storage event
+  // Mỗi tab có session riêng biệt
+  useEffect(() => {
+    const handleLoginSuccess = () => {
+      const newUser = getInitialUser();
+      setUser(newUser);
+    };
+
+    window.addEventListener('auth:loginSuccess', handleLoginSuccess);
     
-    try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGIN}`;
-      console.log('Logging in to:', url);
-      
-      const response = await apiFetch<AuthResponse>(url, {
-        method: 'POST',
-        body: JSON.stringify({ 
-          emailOrUsername: username, 
-          password: password 
-        }),
-      });
-      
-      console.log('Login response:', response);
-      
-      if (response.success && response.data) {
-        // response.data contains the auth data directly (token, userId, email, etc.)
-        const mappedUser = mapBackendUser(response.data);
-        setUser(mappedUser);
-        localStorage.setItem('auth_user', JSON.stringify(mappedUser));
-        localStorage.setItem('authToken', response.data.token);
-        return { success: true, message: 'Đăng nhập thành công!' };
-      }
-      
-      // Return error from API
-      const errorMessage = response.error?.message || 'Đăng nhập thất bại';
-      return { success: false, message: errorMessage };
-      
-    } catch (error) {
-      console.error('Login error:', error);
-      return { 
-        success: false, 
-        message: 'Không thể kết nối đến server. Vui lòng kiểm tra Backend đang chạy.' 
-      };
-    } finally {
-      setIsLoading(false);
-    }
+    return () => {
+      window.removeEventListener('auth:loginSuccess', handleLoginSuccess);
+    };
+  }, []);
+
+  // Login functions are deprecated - use loginAPI directly in LoginPage
+  // Keeping for backward compatibility but they won't work
+  const login = async (): Promise<{ success: boolean; message: string }> => {
+    console.warn('login() is deprecated. Use loginAPI from LoginPage instead.');
+    return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
 
-  // Login with Google/FPT email - API ONLY
-  const loginWithGoogle = async (email: string): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
-    
-    try {
-      if (!email.endsWith('@fpt.edu.vn') && !email.endsWith('@fe.edu.vn')) {
-        return { success: false, message: 'Chỉ chấp nhận email @fpt.edu.vn hoặc @fe.edu.vn' };
-      }
-
-      const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.GOOGLE_LOGIN}`;
-      const response = await apiFetch<AuthResponse>(url, {
-        method: 'POST',
-        body: JSON.stringify({ idToken: email }),
-      });
-      
-      if (response.success && response.data) {
-        const mappedUser = mapBackendUser(response.data);
-        setUser(mappedUser);
-        localStorage.setItem('auth_user', JSON.stringify(mappedUser));
-        localStorage.setItem('authToken', response.data.token);
-        return { success: true, message: 'Đăng nhập thành công!' };
-      }
-      
-      const errorMessage = response.error?.message || 'Đăng nhập Google thất bại';
-      return { success: false, message: errorMessage };
-      
-    } catch (error) {
-      console.error('Google login error:', error);
-      return { 
-        success: false, 
-        message: 'Không thể kết nối đến server. Vui lòng kiểm tra Backend đang chạy.' 
-      };
-    } finally {
-      setIsLoading(false);
-    }
+  const loginWithGoogle = async (): Promise<{ success: boolean; message: string }> => {
+    console.warn('loginWithGoogle() is deprecated. Use loginAPI from LoginPage instead.');
+    return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
 
-  // Logout
+  // Logout - gọi API logout và xóa token/user data
   const logout = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        const url = `${API_BASE_URL}${API_ENDPOINTS.AUTH.LOGOUT}`;
-        await apiFetch(url, { method: 'POST' });
-      }
+      // Gọi API logout trước
+      await logoutAPI();
     } catch (error) {
-      console.warn('Backend logout failed:', error);
+      // Nếu API call thất bại, vẫn xóa token ở client side
+      console.error('Logout API error:', error);
     } finally {
+      // Luôn xóa user state và localStorage để đảm bảo logout hoàn tất
+      // Sử dụng clearAuth để revoke Google session nếu cần
       setUser(null);
-      localStorage.removeItem('auth_user');
-      localStorage.removeItem('authToken');
+      clearAuth();
+      
+      // Dispatch event để các component khác biết đã logout
+      window.dispatchEvent(new Event('auth:logoutSuccess'));
     }
   };
 
