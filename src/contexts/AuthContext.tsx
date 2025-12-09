@@ -1,8 +1,18 @@
-import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../data/userMockData';
 import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
-import { AuthContext, type AuthContextType } from './AuthContext';
 import { clearAuth } from '../utils/auth';
+
+export interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: (email: string) => Promise<{ success: boolean; message: string }>;
+  logout: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
