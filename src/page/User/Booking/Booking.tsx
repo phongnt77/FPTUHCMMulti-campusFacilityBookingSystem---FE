@@ -7,12 +7,12 @@ import {
 } from 'lucide-react';
 import type { Facility, FacilityType } from '../../../types';
 import { bookingApi, type TimeSlot, type BookingRequest } from './api/api';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuthState } from '../../../hooks/useAuthState';
 
 const BookingPage = () => {
   const { facilityId } = useParams<{ facilityId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user } = useAuthState();
   
   // States
   const [facility, setFacility] = useState<Facility | null>(null);

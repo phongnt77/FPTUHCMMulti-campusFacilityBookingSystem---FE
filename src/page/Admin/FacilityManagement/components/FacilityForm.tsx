@@ -1,196 +1,325 @@
-import { Building2, MapPin, Users, FileText, X } from 'lucide-react'
-import type { Facility } from '../../../../types'
+import { useState, useEffect } from 'react'
+import { Building2, MapPin, Users, FileText, X, Loader2 } from 'lucide-react'
+import type { Facility, FacilityRequest } from '../api/facilityApi'
+import { getCampuses, type Campus } from '../../CampusManagement/api/campusApi'
+import { getFacilityTypes, type FacilityType } from '../api/facilityTypeApi'
 
 interface FacilityFormProps {
-  facility: Partial<Facility> | null
+  facility: Facility | null
   onClose: () => void
-  onSave: (facility: Partial<Facility>) => void
+  onSave: (facilityData: FacilityRequest) => Promise<void>
+  loading?: boolean
 }
 
-const FacilityForm = ({ facility, onClose, onSave }: FacilityFormProps) => {
-  const isEdit = facility?.id !== undefined
+const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFormProps) => {
+  const isEdit = facility !== null
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // State cho dropdowns
+  const [campuses, setCampuses] = useState<Campus[]>([])
+  const [facilityTypes, setFacilityTypes] = useState<FacilityType[]>([])
+  const [loadingOptions, setLoadingOptions] = useState(true)
+
+  // Load campuses và facility types
+  useEffect(() => {
+    const loadOptions = async () => {
+      setLoadingOptions(true)
+      try {
+        const [campusesRes, typesRes] = await Promise.all([
+          getCampuses({ page: 1, limit: 100 }), // Lấy tất cả campuses
+          getFacilityTypes({ page: 1, limit: 100 }), // Lấy tất cả facility types
+        ])
+
+        if (campusesRes.success && campusesRes.data) {
+          // Chỉ lấy campuses Active
+          setCampuses(campusesRes.data.filter((c) => c.status === 'Active'))
+        }
+
+        if (typesRes.success && typesRes.data) {
+          setFacilityTypes(typesRes.data)
+        }
+      } catch (error) {
+        console.error('Error loading options:', error)
+        alert('Không thể tải danh sách campuses và facility types')
+      } finally {
+        setLoadingOptions(false)
+      }
+    }
+
+    loadOptions()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const amenities = formData.get('amenities')?.toString().split(',').map((a) => a.trim()).filter(Boolean) || []
 
-    const facilityData: Partial<Facility> = {
+    const facilityData: FacilityRequest = {
       name: formData.get('name')?.toString() || '',
-      type: formData.get('type')?.toString() as Facility['type'],
-      campus: formData.get('campus')?.toString() as Facility['campus'],
-      capacity: Number(formData.get('capacity')) || 0,
-      location: formData.get('location')?.toString() || '',
       description: formData.get('description')?.toString() || '',
-      amenities,
-      isActive: formData.get('isActive') === 'true'
+      capacity: Number(formData.get('capacity')) || 0,
+      roomNumber: formData.get('roomNumber')?.toString() || '',
+      floorNumber: formData.get('floorNumber')?.toString() || '',
+      campusId: formData.get('campusId')?.toString() || '',
+      typeId: formData.get('typeId')?.toString() || '',
+      status: (formData.get('status')?.toString() || 'Available') as 'Available' | 'Under_Maintenance',
+      amenities: formData.get('amenities')?.toString() || '',
+      facilityManagerId: formData.get('facilityManagerId')?.toString() || undefined,
+      maxConcurrentBookings: Number(formData.get('maxConcurrentBookings')) || 1,
     }
 
-    if (isEdit && facility.id) {
-      facilityData.id = facility.id
+    // Validation
+    if (!facilityData.campusId) {
+      alert('Vui lòng chọn campus')
+      return
     }
 
-    onSave(facilityData)
+    if (!facilityData.typeId) {
+      alert('Vui lòng chọn loại facility')
+      return
+    }
+
+    if (facilityData.capacity <= 0) {
+      alert('Sức chứa phải lớn hơn 0')
+      return
+    }
+
+    try {
+      await onSave(facilityData)
+    } catch (error) {
+      // Error đã được xử lý trong parent component
+      console.error('Error saving facility:', error)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 p-6">
+      <div className="w-full max-w-3xl rounded-lg border border-gray-200 bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white p-6">
           <h2 className="text-xl font-semibold text-gray-900">
-            {isEdit ? 'Edit Facility' : 'Add New Facility'}
+            {isEdit ? 'Chỉnh sửa cơ sở vật chất' : 'Thêm cơ sở vật chất mới'}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            disabled={loading}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+        {loadingOptions ? (
+          <div className="flex items-center justify-center p-12">
+            <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            <p className="ml-3 text-sm text-gray-600">Đang tải dữ liệu...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6">
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    <Building2 className="mr-1 inline h-4 w-4" />
+                    Tên cơ sở vật chất <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    defaultValue={facility?.name || ''}
+                    required
+                    disabled={loading}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Loại <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="typeId"
+                    defaultValue={facility?.typeId || ''}
+                    required
+                    disabled={loading || loadingOptions}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Chọn loại</option>
+                    {facilityTypes.map((type) => (
+                      <option key={type.typeId} value={type.typeId}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    <MapPin className="mr-1 inline h-4 w-4" />
+                    Campus <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="campusId"
+                    defaultValue={facility?.campusId || ''}
+                    required
+                    disabled={loading || loadingOptions}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Chọn campus</option>
+                    {campuses.map((campus) => (
+                      <option key={campus.campusId} value={campus.campusId}>
+                        {campus.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    <Users className="mr-1 inline h-4 w-4" />
+                    Sức chứa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="capacity"
+                    defaultValue={facility?.capacity || ''}
+                    min="1"
+                    required
+                    disabled={loading}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Số phòng <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="roomNumber"
+                    defaultValue={facility?.roomNumber || ''}
+                    required
+                    disabled={loading}
+                    placeholder="VD: A101"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Tầng <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="floorNumber"
+                    defaultValue={facility?.floorNumber || ''}
+                    required
+                    disabled={loading}
+                    placeholder="VD: 3"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Trạng thái <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="status"
+                    defaultValue={facility?.status || 'Available'}
+                    required
+                    disabled={loading}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Under_Maintenance">Under Maintenance</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <Building2 className="mr-1 inline h-4 w-4" />
-                  Facility Name <span className="text-red-500">*</span>
+                  <FileText className="mr-1 inline h-4 w-4" />
+                  Mô tả
                 </label>
+                <textarea
+                  name="description"
+                  defaultValue={facility?.description || ''}
+                  rows={3}
+                  disabled={loading}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">Tiện ích</label>
                 <input
                   type="text"
-                  name="name"
-                  defaultValue={facility?.name || ''}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                  name="amenities"
+                  defaultValue={facility?.amenities || ''}
+                  disabled={loading}
+                  placeholder="VD: Máy chiếu, WiFi, Điều hòa (phân cách bằng dấu phẩy)"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
+                <p className="mt-1 text-xs text-gray-500">Phân cách các tiện ích bằng dấu phẩy</p>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="type"
-                  defaultValue={facility?.type || ''}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-                >
-                  <option value="">Select type</option>
-                  <option value="meeting-room">Meeting Room</option>
-                  <option value="lab-room">Lab Room</option>
-                  <option value="sports-field">Sports Field</option>
-                </select>
-              </div>
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Facility Manager ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    name="facilityManagerId"
+                    defaultValue={facility?.facilityManagerId || ''}
+                    disabled={loading}
+                    placeholder="VD: U0001"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <MapPin className="mr-1 inline h-4 w-4" />
-                  Campus <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="campus"
-                  defaultValue={facility?.campus || ''}
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-                >
-                  <option value="">Select campus</option>
-                  <option value="HCM">HCM Campus</option>
-                  <option value="NVH">NVH Campus</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <Users className="mr-1 inline h-4 w-4" />
-                  Capacity <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="capacity"
-                  defaultValue={facility?.capacity || ''}
-                  min="1"
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-                />
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Số booking đồng thời tối đa <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="maxConcurrentBookings"
+                    defaultValue={facility?.maxConcurrentBookings || 1}
+                    min="1"
+                    required
+                    disabled={loading}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                <MapPin className="mr-1 inline h-4 w-4" />
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="location"
-                defaultValue={facility?.location || ''}
-                placeholder="e.g. Tầng 3, Tòa A"
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-              />
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={loading || loadingOptions}
+                className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isEdit ? 'Cập nhật' : 'Tạo mới'}
+              </button>
             </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                <FileText className="mr-1 inline h-4 w-4" />
-                Description
-              </label>
-              <textarea
-                name="description"
-                defaultValue={facility?.description || ''}
-                rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">Amenities</label>
-              <input
-                type="text"
-                name="amenities"
-                defaultValue={facility?.amenities?.join(', ') || ''}
-                placeholder="e.g. Projector, WiFi, AC (comma separated)"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-              />
-              <p className="mt-1 text-xs text-gray-500">Separate amenities with commas</p>
-            </div>
-
-            <div>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  value="true"
-                  defaultChecked={facility?.isActive !== false}
-                  className="h-4 w-4 rounded border-gray-300 text-orange-500"
-                />
-                <span className="text-sm font-semibold text-gray-700">Active</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
-            >
-              {isEdit ? 'Update Facility' : 'Create Facility'}
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )
 }
 
 export default FacilityForm
-

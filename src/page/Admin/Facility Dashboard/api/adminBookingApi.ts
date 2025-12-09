@@ -1,0 +1,232 @@
+import axios from 'axios';
+import { getToken } from '../../../../utils/auth';
+
+const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
+
+// Tạo axios instance với baseURL
+const adminBookingApiClient = axios.create({
+  baseURL: baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Thêm request interceptor để tự động thêm token vào header
+adminBookingApiClient.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interface cho Booking từ API response
+export interface AdminBooking {
+  bookingId: string;
+  userId: string;
+  userName: string;
+  facilityId: string;
+  facilityName: string;
+  startTime: string; // ISO 8601 format
+  endTime: string; // ISO 8601 format
+  purpose: string;
+  category: string;
+  estimatedAttendees: number;
+  specialRequirements: string;
+  status: 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected' | 'Cancelled' | 'Completed' | 'No_Show';
+  approvedBy: string | null;
+  approvedAt: string | null; // ISO 8601 format
+  rejectionReason: string | null;
+  checkInTime: string | null; // ISO 8601 format
+  checkOutTime: string | null; // ISO 8601 format
+  isUsed: boolean;
+  createdAt: string; // ISO 8601 format
+  updatedAt: string; // ISO 8601 format
+}
+
+// Interface cho Pagination
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+}
+
+// Interface cho API Response
+export interface AdminBookingsResponse {
+  success: boolean;
+  error: {
+    code: number;
+    message: string;
+  } | null;
+  code: number;
+  message: string;
+  data: AdminBooking[];
+  pagination?: Pagination;
+}
+
+// Interface cho Approve/Reject Response
+export interface BookingActionResponse {
+  success: boolean;
+  error: {
+    code: number;
+    message: string;
+  } | null;
+  data: AdminBooking | null;
+}
+
+// Interface cho Reject Request Body
+export interface RejectBookingRequest {
+  reason?: string;
+}
+
+// Query parameters cho getBookings
+export interface GetBookingsParams {
+  status?: 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected' | 'Cancelled' | 'Completed' | 'No_Show' | 'PENDING';
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Lấy danh sách bookings với filtering và pagination (Admin view)
+ * @param params - Query parameters: status, page, limit
+ * @returns Promise với danh sách bookings và pagination info
+ * @description
+ * - GET /api/admin/bookings
+ * - Có thể filter theo status
+ * - Có pagination (page, limit)
+ * - "PENDING" sẽ tự động convert thành "Pending_Approval"
+ */
+export const getAdminBookings = async (
+  params?: GetBookingsParams
+): Promise<AdminBookingsResponse> => {
+  try {
+    // Convert "PENDING" thành "Pending_Approval" nếu có
+    const queryParams: Record<string, string | number> = {};
+    
+    if (params?.status) {
+      // Convert "PENDING" to "Pending_Approval" như API docs
+      queryParams.status = params.status === 'PENDING' ? 'Pending_Approval' : params.status;
+    }
+    
+    if (params?.page !== undefined) {
+      queryParams.page = params.page;
+    }
+    
+    if (params?.limit !== undefined) {
+      queryParams.limit = params.limit;
+    }
+
+    const response = await adminBookingApiClient.get<AdminBookingsResponse>('/api/admin/bookings', {
+      params: queryParams,
+    });
+
+    return response.data;
+  } catch (error: any) {
+    // Xử lý lỗi từ axios
+    if (error.response) {
+      // Lỗi từ server (400, 401, 500, etc.)
+      const result = error.response.data as AdminBookingsResponse;
+      if (result) {
+        throw new Error(result.error?.message || result.message || 'Lỗi khi lấy danh sách bookings');
+      }
+      throw new Error(error.response.statusText || 'Lỗi khi lấy danh sách bookings');
+    }
+    
+    // Lỗi network
+    if (error.request) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+    }
+    
+    // Lỗi khác
+    console.error('Get admin bookings API error:', error);
+    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  }
+};
+
+/**
+ * Duyệt booking (Approve)
+ * @param bookingId - ID của booking cần duyệt
+ * @returns Promise với booking đã được duyệt
+ * @description
+ * - PATCH /api/admin/bookings/{bookingId}/approve
+ * - Booking phải ở trạng thái Pending_Approval
+ * - Facility không được trùng lịch với booking đã approved
+ * - Ghi nhận approver ID (người duyệt)
+ */
+export const approveBooking = async (bookingId: string): Promise<BookingActionResponse> => {
+  try {
+    const response = await adminBookingApiClient.patch<BookingActionResponse>(
+      `/api/admin/bookings/${bookingId}/approve`
+    );
+
+    return response.data;
+  } catch (error: any) {
+    // Xử lý lỗi từ axios
+    if (error.response) {
+      const result = error.response.data as BookingActionResponse;
+      if (result?.error) {
+        throw new Error(result.error.message || 'Lỗi khi duyệt booking');
+      }
+      throw new Error(error.response.statusText || 'Lỗi khi duyệt booking');
+    }
+    
+    if (error.request) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+    }
+    
+    console.error('Approve booking API error:', error);
+    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  }
+};
+
+/**
+ * Từ chối booking (Reject)
+ * @param bookingId - ID của booking cần từ chối
+ * @param reason - Lý do từ chối (optional)
+ * @returns Promise với booking đã bị từ chối
+ * @description
+ * - PATCH /api/admin/bookings/{bookingId}/reject
+ * - Booking phải ở trạng thái Pending_Approval
+ * - Có thể gửi lý do (reason) trong body
+ * - Lý do sẽ được lưu vào RejectionReason field
+ */
+export const rejectBooking = async (
+  bookingId: string,
+  reason?: string
+): Promise<BookingActionResponse> => {
+  try {
+    const requestBody: RejectBookingRequest = {};
+    if (reason && reason.trim()) {
+      requestBody.reason = reason.trim();
+    }
+
+    const response = await adminBookingApiClient.patch<BookingActionResponse>(
+      `/api/admin/bookings/${bookingId}/reject`,
+      requestBody
+    );
+
+    return response.data;
+  } catch (error: any) {
+    // Xử lý lỗi từ axios
+    if (error.response) {
+      const result = error.response.data as BookingActionResponse;
+      if (result?.error) {
+        throw new Error(result.error.message || 'Lỗi khi từ chối booking');
+      }
+      throw new Error(error.response.statusText || 'Lỗi khi từ chối booking');
+    }
+    
+    if (error.request) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+    }
+    
+    console.error('Reject booking API error:', error);
+    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  }
+};
+

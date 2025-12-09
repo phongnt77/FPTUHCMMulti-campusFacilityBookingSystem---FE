@@ -1,15 +1,20 @@
 import { CheckCircle2, XCircle, Calendar, Clock, MapPin, Users, FileText } from 'lucide-react'
-import type { BookingDetail } from '../../../../data/bookingMockData'
+import type { AdminBooking } from '../api/adminBookingApi'
 
 interface BookingCardProps {
-  booking: BookingDetail
+  booking: AdminBooking
   onApprove: (bookingId: string) => void
   onReject: (bookingId: string) => void
 }
 
 const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
+  // Parse ISO date strings từ API
+  const startTime = new Date(booking.startTime)
+  const endTime = new Date(booking.endTime)
+  const createdAt = new Date(booking.createdAt)
+
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('vi-VN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -17,11 +22,72 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
   }
 
   const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false
     }).format(date)
+  }
+
+  // Parse specialRequirements từ string (JSON) nếu có
+  const parseSpecialRequirements = (): Record<string, any> | null => {
+    if (!booking.specialRequirements || booking.specialRequirements.trim() === '') {
+      return null
+    }
+    try {
+      return JSON.parse(booking.specialRequirements)
+    } catch {
+      // Nếu không phải JSON, trả về như một string đơn giản
+      return { note: booking.specialRequirements }
+    }
+  }
+
+  const specialRequirements = parseSpecialRequirements()
+
+  // Chỉ hiển thị nút Approve/Reject nếu booking ở trạng thái Pending_Approval
+  const canApproveOrReject = booking.status === 'Pending_Approval'
+
+  // Get status badge color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pending_Approval':
+        return 'bg-yellow-100 text-yellow-700'
+      case 'Approved':
+        return 'bg-green-100 text-green-700'
+      case 'Rejected':
+        return 'bg-red-100 text-red-700'
+      case 'Completed':
+        return 'bg-blue-100 text-blue-700'
+      case 'Cancelled':
+        return 'bg-gray-100 text-gray-700'
+      case 'Draft':
+        return 'bg-gray-100 text-gray-600'
+      case 'No_Show':
+        return 'bg-orange-100 text-orange-700'
+      default:
+        return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'Pending_Approval':
+        return 'Chờ duyệt'
+      case 'Approved':
+        return 'Đã duyệt'
+      case 'Rejected':
+        return 'Đã từ chối'
+      case 'Completed':
+        return 'Hoàn thành'
+      case 'Cancelled':
+        return 'Đã hủy'
+      case 'Draft':
+        return 'Bản nháp'
+      case 'No_Show':
+        return 'Không đến'
+      default:
+        return status
+    }
   }
 
   const getCategoryColor = (category?: string) => {
@@ -47,8 +113,8 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
         <div className="flex-1 space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold text-gray-900">{booking.facility.name}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold text-gray-900">{booking.facilityName}</h3>
                 {booking.category && (
                   <span
                     className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getCategoryColor(booking.category)}`}
@@ -56,6 +122,11 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
                     {booking.category}
                   </span>
                 )}
+                <span
+                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(booking.status)}`}
+                >
+                  {getStatusLabel(booking.status)}
+                </span>
               </div>
               <p className="mt-1 text-sm text-gray-600">{booking.purpose}</p>
             </div>
@@ -65,34 +136,32 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             <div className="flex items-start gap-2">
               <Calendar className="mt-0.5 h-4 w-4 text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Date</p>
-                <p className="text-sm font-medium text-gray-900">{formatDate(booking.startTime)}</p>
+                <p className="text-xs text-gray-500">Ngày</p>
+                <p className="text-sm font-medium text-gray-900">{formatDate(startTime)}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Clock className="mt-0.5 h-4 w-4 text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Time</p>
+                <p className="text-xs text-gray-500">Giờ</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
+                  {formatTime(startTime)} - {formatTime(endTime)}
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Location</p>
-                <p className="text-sm font-medium text-gray-900">
-                  {booking.facility.campus} · {booking.facility.location}
-                </p>
+                <p className="text-xs text-gray-500">Facility ID</p>
+                <p className="text-sm font-medium text-gray-900">{booking.facilityId}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <Users className="mt-0.5 h-4 w-4 text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Attendees</p>
+                <p className="text-xs text-gray-500">Số người tham gia</p>
                 <p className="text-sm font-medium text-gray-900">
-                  {booking.estimated_attendees || 'N/A'} / {booking.facility.capacity}
+                  {booking.estimatedAttendees || 'N/A'}
                 </p>
               </div>
             </div>
@@ -100,30 +169,28 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
 
           <div className="flex items-center gap-3 rounded-lg bg-gray-50 p-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
-              {booking.user.name.charAt(0)}
+              {booking.userName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">{booking.user.name}</p>
-              <p className="text-xs text-gray-500">
-                {booking.user.email} · {booking.user.role === 'student' ? 'Student' : 'Lecturer'}
-              </p>
+              <p className="text-sm font-semibold text-gray-900">{booking.userName}</p>
+              <p className="text-xs text-gray-500">User ID: {booking.userId}</p>
             </div>
           </div>
 
-          {booking.special_requirements && Object.keys(booking.special_requirements).length > 0 && (
+          {specialRequirements && Object.keys(specialRequirements).length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <div className="mb-2 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-gray-400" />
-                <p className="text-xs font-semibold text-gray-700">Special Requirements</p>
+                <p className="text-xs font-semibold text-gray-700">Yêu cầu đặc biệt</p>
               </div>
               <ul className="space-y-1">
-                {Object.entries(booking.special_requirements).map(([key, value]) => (
+                {Object.entries(specialRequirements).map(([key, value]) => (
                   <li key={key} className="text-xs text-gray-600">
                     <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
                     {typeof value === 'boolean'
                       ? value
-                        ? 'Yes'
-                        : 'No'
+                        ? 'Có'
+                        : 'Không'
                       : Array.isArray(value)
                         ? value.join(', ')
                         : String(value)}
@@ -133,30 +200,52 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             </div>
           )}
 
+          {booking.rejectionReason && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <p className="text-xs font-semibold text-red-700">Lý do từ chối</p>
+              </div>
+              <p className="text-xs text-red-600">{booking.rejectionReason}</p>
+            </div>
+          )}
+
+          {booking.approvedBy && booking.approvedAt && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <CheckCircle2 className="h-3 w-3 text-green-600" />
+              <span>
+                Đã duyệt bởi {booking.approvedBy} vào {formatDate(new Date(booking.approvedAt))} lúc{' '}
+                {formatTime(new Date(booking.approvedAt))}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Clock className="h-3 w-3" />
             <span>
-              Requested on {formatDate(booking.createdAt)} at {formatTime(booking.createdAt)}
+              Yêu cầu vào {formatDate(createdAt)} lúc {formatTime(createdAt)}
             </span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 lg:w-48">
-          <button
-            onClick={() => onApprove(booking.id)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Approve
-          </button>
-          <button
-            onClick={() => onReject(booking.id)}
-            className="flex items-center justify-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
-          >
-            <XCircle className="h-4 w-4" />
-            Reject
-          </button>
-        </div>
+        {canApproveOrReject && (
+          <div className="flex flex-col gap-2 lg:w-48">
+            <button
+              onClick={() => onApprove(booking.bookingId)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700 transition-colors"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Duyệt
+            </button>
+            <button
+              onClick={() => onReject(booking.bookingId)}
+              className="flex items-center justify-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition-colors"
+            >
+              <XCircle className="h-4 w-4" />
+              Từ chối
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

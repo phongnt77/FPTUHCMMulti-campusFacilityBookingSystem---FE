@@ -2,7 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import HomePage from '../../page/User/Home'
 import FacilityPage from '../../page/User/Facility'
 import BookingPage from '../../page/User/Booking'
-import MyBookingsPage from '../../page/User/MyBookings'
+import ProfilePage from '../../page/User/Profile'
 import ProtectedRoute from '../../components/ProtectedRoute'
 
 const UserRoutes = () => {
@@ -27,10 +27,10 @@ const UserRoutes = () => {
         } 
       />
       <Route 
-        path="/my-bookings" 
+        path="/profile" 
         element={
           <ProtectedRoute allowedRoles={['Student', 'Lecturer']}>
-            <MyBookingsPage />
+            <ProfilePage />
           </ProtectedRoute>
         } 
       />
