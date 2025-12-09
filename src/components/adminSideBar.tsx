@@ -46,7 +46,7 @@ const AdminSideBar = () => {
             }
           >
             <LayoutDashboard className="h-5 w-5" />
-            <span>Dashboard</span>
+            <span>BookingDashboard</span>
           </NavLink>
 
           <NavLink
