@@ -20,7 +20,6 @@ const EmailVerificationModal = ({ email, onVerified, onClose }: EmailVerificatio
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (!code.trim()) {
       setError('Vui lòng nhập mã xác thực');
@@ -49,7 +48,6 @@ const EmailVerificationModal = ({ email, onVerified, onClose }: EmailVerificatio
 
   const handleResend = async () => {
     setError('');
-    setSuccess('');
     setResending(true);
 
     const result = await resendVerificationEmail(email);
