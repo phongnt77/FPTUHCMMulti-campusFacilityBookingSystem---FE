@@ -10,6 +10,8 @@ interface CampusInfo {
   fullName: string;
   description: string;
   gradient: string;
+  imageUrl: string;
+  imageAlt: string;
 }
 
 const campuses: CampusInfo[] = [
@@ -18,14 +20,18 @@ const campuses: CampusInfo[] = [
     name: 'HCM Campus',
     fullName: 'FPT University HCMC - Quận 9',
     description: 'Campus chính tại Quận 9 với đầy đủ cơ sở vật chất hiện đại',
-    gradient: 'from-orange-500 to-amber-600'
+    gradient: 'from-orange-500 to-amber-600',
+    imageUrl: '/images/HCM.webp',
+    imageAlt: 'FPTU HCM Campus'
   },
   {
     id: 'NVH',
     name: 'NVH Campus', 
     fullName: 'FPT University - Nguyễn Văn Huyên',
     description: 'Campus Nguyễn Văn Huyên với không gian học tập đa dạng',
-    gradient: 'from-violet-500 to-purple-600'
+    gradient: 'from-violet-500 to-purple-600',
+    imageUrl: '/images/nvh.jpg',
+    imageAlt: 'FPTU Nguyễn Văn Huyên Campus'
   }
 ];
 
@@ -181,7 +187,7 @@ const FacilityPage = () => {
 
   // Campus Selection View
   if (!selectedCampus) {
-    return (
+  return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
         {/* Header Section */}
         <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-600 to-purple-600">
@@ -212,13 +218,18 @@ const FacilityPage = () => {
                 onClick={() => handleCampusSelect(campus.id)}
                 className="group relative bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden hover:shadow-xl hover:shadow-gray-300/50 transition-all duration-300 transform hover:-translate-y-1 text-left"
               >
-                {/* Gradient Header */}
-                <div 
-                  className={`h-32 bg-gradient-to-br ${campus.gradient} relative overflow-hidden`}
-                >
-                  <div className="absolute inset-0 bg-black/10" />
-                  <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full" />
-                  <div className="absolute right-4 bottom-4 text-white/30">
+                {/* Image Header */}
+                <div className="relative h-36 overflow-hidden bg-gray-100">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${campus.gradient} opacity-70`} />
+                  <img
+                    src={campus.imageUrl}
+                    alt={campus.imageAlt}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-black/15" />
+                  <div className="absolute right-4 bottom-4 text-white/80 drop-shadow">
                     <MapPin className="w-16 h-16" />
                   </div>
                 </div>
@@ -280,8 +291,8 @@ const FacilityPage = () => {
               </div>
             </div>
           </div>
-        </div>
       </div>
+    </div>
     );
   }
 
