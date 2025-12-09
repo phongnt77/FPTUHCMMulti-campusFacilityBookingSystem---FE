@@ -12,7 +12,7 @@ import './App.css'
 
 // Import Preline
 import 'preline/preline'
-import { IStaticMethods } from 'preline/preline'
+import type { IStaticMethods } from 'preline/preline'
 declare global {
   interface Window {
     HSStaticMethods: IStaticMethods
