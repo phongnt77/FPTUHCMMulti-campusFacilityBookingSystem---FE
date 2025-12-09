@@ -80,12 +80,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Login functions are deprecated - use loginAPI directly in LoginPage
   // Keeping for backward compatibility but they won't work
-  const login = async (username: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const login = async (): Promise<{ success: boolean; message: string }> => {
     console.warn('login() is deprecated. Use loginAPI from LoginPage instead.');
     return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
 
-  const loginWithGoogle = async (email: string): Promise<{ success: boolean; message: string }> => {
+  const loginWithGoogle = async (): Promise<{ success: boolean; message: string }> => {
     console.warn('loginWithGoogle() is deprecated. Use loginAPI from LoginPage instead.');
     return { success: false, message: 'Vui lòng sử dụng API login trực tiếp' };
   };
