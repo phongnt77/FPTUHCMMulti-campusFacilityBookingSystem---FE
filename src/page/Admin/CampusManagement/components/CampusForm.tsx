@@ -108,6 +108,10 @@ const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProp
                   required
                   disabled={loading}
                   placeholder="VD: 028 7300 1866"
+                  onInput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    target.value = target.value.replace(/[^0-9+\-\s()]/g, '');
+                  }}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
