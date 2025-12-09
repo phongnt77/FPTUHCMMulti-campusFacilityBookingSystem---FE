@@ -1,6 +1,15 @@
 export type Campus = 'HCM' | 'NVH';
 
-export type FacilityType = 'meeting-room' | 'lab-room' | 'sports-field';
+export type FacilityType = 
+  | 'Classroom' 
+  | 'Meeting Room' 
+  | 'Laboratory' 
+  | 'Sport Facility' 
+  | 'Auditorium' 
+  | 'Library'
+  | 'meeting-room'  // Legacy
+  | 'lab-room'      // Legacy
+  | 'sports-field'; // Legacy
 
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
 
@@ -57,4 +66,3 @@ export interface DashboardStats {
     'sports-field': number;
   };
 }
-

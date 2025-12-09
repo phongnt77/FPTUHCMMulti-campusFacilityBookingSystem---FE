@@ -82,32 +82,64 @@ const FacilityPage = () => {
   };
 
   const getFacilityTypeLabel = (type: FacilityType): string => {
-    const labels: Record<FacilityType, string> = {
+    const labels: Record<string, string> = {
+      'Classroom': 'Phòng học',
+      'Meeting Room': 'Phòng họp',
+      'Laboratory': 'Phòng Lab',
+      'Sport Facility': 'Sân thể thao',
+      'Auditorium': 'Hội trường',
+      'Library': 'Thư viện',
       'meeting-room': 'Phòng họp',
       'lab-room': 'Phòng Lab',
       'sports-field': 'Sân thể thao',
     };
-    return labels[type];
+    return labels[type] || type;
   };
 
   const getFacilityTypeIcon = (type: FacilityType) => {
     switch (type) {
+      case 'Meeting Room':
       case 'meeting-room':
+      case 'Classroom':
         return <Building2 className="w-5 h-5" />;
+      case 'Laboratory':
       case 'lab-room':
         return <FlaskConical className="w-5 h-5" />;
+      case 'Sport Facility':
       case 'sports-field':
         return <Trophy className="w-5 h-5" />;
+      case 'Auditorium':
+      case 'Library':
+      default:
+        return <Building2 className="w-5 h-5" />;
     }
   };
 
   const getFacilityTypeColor = (type: FacilityType) => {
-    const colors: Record<FacilityType, { bg: string; text: string; border: string; accent: string }> = {
+    const colors: Record<string, { bg: string; text: string; border: string; accent: string }> = {
+      'Classroom': { 
+        bg: 'bg-blue-50', 
+        text: 'text-blue-700', 
+        border: 'border-blue-200',
+        accent: 'bg-blue-500'
+      },
+      'Meeting Room': { 
+        bg: 'bg-violet-50', 
+        text: 'text-violet-700', 
+        border: 'border-violet-200',
+        accent: 'bg-violet-500'
+      },
       'meeting-room': { 
         bg: 'bg-violet-50', 
         text: 'text-violet-700', 
         border: 'border-violet-200',
         accent: 'bg-violet-500'
+      },
+      'Laboratory': { 
+        bg: 'bg-amber-50', 
+        text: 'text-amber-700', 
+        border: 'border-amber-200',
+        accent: 'bg-amber-500'
       },
       'lab-room': { 
         bg: 'bg-amber-50', 
@@ -115,14 +147,32 @@ const FacilityPage = () => {
         border: 'border-amber-200',
         accent: 'bg-amber-500'
       },
+      'Sport Facility': { 
+        bg: 'bg-emerald-50', 
+        text: 'text-emerald-700', 
+        border: 'border-emerald-200',
+        accent: 'bg-emerald-500'
+      },
       'sports-field': { 
         bg: 'bg-emerald-50', 
         text: 'text-emerald-700', 
         border: 'border-emerald-200',
         accent: 'bg-emerald-500'
       },
+      'Auditorium': { 
+        bg: 'bg-rose-50', 
+        text: 'text-rose-700', 
+        border: 'border-rose-200',
+        accent: 'bg-rose-500'
+      },
+      'Library': { 
+        bg: 'bg-cyan-50', 
+        text: 'text-cyan-700', 
+        border: 'border-cyan-200',
+        accent: 'bg-cyan-500'
+      },
     };
-    return colors[type];
+    return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', accent: 'bg-gray-500' };
   };
 
   const selectedCampusInfo = selectedCampus 
@@ -298,7 +348,7 @@ const FacilityPage = () => {
               >
                 Tất cả
               </button>
-              {(['meeting-room', 'lab-room', 'sports-field'] as FacilityType[]).map((type) => {
+              {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility', 'Auditorium', 'Library'] as FacilityType[]).map((type) => {
                 const colors = getFacilityTypeColor(type);
                 const isSelected = selectedType === type;
                 return (
@@ -448,9 +498,10 @@ const FacilityPage = () => {
 
         {/* Stats Summary */}
         {!loading && facilities.length > 0 && (
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            {(['meeting-room', 'lab-room', 'sports-field'] as FacilityType[]).map((type) => {
+          <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility', 'Auditorium', 'Library'] as FacilityType[]).map((type) => {
               const count = facilities.filter(f => f.type === type).length;
+              if (count === 0) return null;
               const colors = getFacilityTypeColor(type);
               return (
                 <div key={type} className={`${colors.bg} rounded-xl p-4 border ${colors.border}`}>
