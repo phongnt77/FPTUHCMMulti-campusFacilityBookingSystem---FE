@@ -1,11 +1,11 @@
-import type { Facility } from '../../../../types';
-import { mockFacilities } from '../../../../data/adminMockData';
+import { API_BASE_URL, API_ENDPOINTS, apiFetch, buildUrl } from '../../../../services/api.config';
+import type { Facility, Campus, FacilityType } from '../../../../types';
 
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'rejected';
+export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
 
 export interface Feedback {
   id: string;
-  rating: number; // 1-5
+  rating: number;
   comment: string;
   createdAt: string;
 }
@@ -27,102 +27,37 @@ export interface UserBooking {
   rejectionReason?: string;
 }
 
-// Mock bookings data
-const mockUserBookings: UserBooking[] = [
-  {
-    id: 'BK001',
-    lessonBookingId: 'LB001',
-    lessonBookingDate: '2024-12-01',
-    facilityId: 'f1',
-    facility: mockFacilities[0],
-    date: '2024-12-01',
-    startTime: '09:00',
-    endTime: '10:00',
-    purpose: 'Họp nhóm dự án SWP391',
-    numberOfPeople: 8,
-    status: 'completed',
-    createdAt: '2024-11-28T10:00:00Z',
-    feedback: {
-      id: 'FB001',
-      rating: 5,
-      comment: 'Phòng rất sạch sẽ, thiết bị hoạt động tốt!',
-      createdAt: '2024-12-01T11:00:00Z'
-    }
-  },
-  {
-    id: 'BK002',
-    lessonBookingId: 'LB002',
-    lessonBookingDate: '2024-12-03',
-    facilityId: 'f3',
-    facility: mockFacilities[2],
-    date: '2024-12-03',
-    startTime: '14:00',
-    endTime: '16:00',
-    purpose: 'Thực hành lập trình Java',
-    numberOfPeople: 25,
-    status: 'completed',
-    createdAt: '2024-12-01T08:00:00Z'
-    // No feedback yet
-  },
-  {
-    id: 'BK003',
-    lessonBookingId: 'LB003',
-    lessonBookingDate: '2024-12-10',
-    facilityId: 'f2',
-    facility: mockFacilities[1],
-    date: '2024-12-10',
-    startTime: '10:00',
-    endTime: '11:00',
-    purpose: 'Thuyết trình môn học',
-    numberOfPeople: 15,
-    status: 'confirmed',
-    createdAt: '2024-12-04T09:00:00Z'
-  },
-  {
-    id: 'BK004',
-    lessonBookingId: 'LB004',
-    lessonBookingDate: '2024-12-15',
-    facilityId: 'f5',
-    facility: mockFacilities[4],
-    date: '2024-12-15',
-    startTime: '18:00',
-    endTime: '20:00',
-    purpose: 'Tập luyện bóng đá CLB',
-    numberOfPeople: 20,
-    status: 'pending',
-    createdAt: '2024-12-04T14:00:00Z'
-  },
-  {
-    id: 'BK005',
-    lessonBookingId: 'LB005',
-    lessonBookingDate: '2024-12-05',
-    facilityId: 'f1',
-    facility: mockFacilities[0],
-    date: '2024-12-05',
-    startTime: '15:00',
-    endTime: '16:00',
-    purpose: 'Họp ban cán sự lớp',
-    numberOfPeople: 5,
-    status: 'rejected',
-    createdAt: '2024-12-03T10:00:00Z',
-    rejectionReason: 'Phòng đã được đặt cho sự kiện khác'
-  },
-  {
-    id: 'BK006',
-    lessonBookingId: 'LB006',
-    lessonBookingDate: '2024-12-02',
-    facilityId: 'f7',
-    facility: mockFacilities[6],
-    date: '2024-12-02',
-    startTime: '08:00',
-    endTime: '10:00',
-    purpose: 'Workshop AI/ML',
-    numberOfPeople: 20,
-    status: 'completed',
-    createdAt: '2024-11-30T16:00:00Z'
-    // No feedback yet - can be reviewed
-  }
-];
+// Backend response types
+interface BackendBookingResponse {
+  bookingId: string;
+  facilityId: string;
+  facilityName: string;
+  facilityDescription?: string;
+  facilityCapacity?: number;
+  facilityRoomNumber?: string;
+  facilityFloorNumber?: string;
+  campusName?: string;
+  typeName?: string;
+  userId: string;
+  userName?: string;
+  startTime: string;
+  endTime: string;
+  purpose: string;
+  status: string;
+  estimatedAttendees: number;
+  specialRequirements?: string;
+  createdAt: string;
+  rejectionReason?: string;
+}
+
+interface BackendFeedbackResponse {
+  feedbackId: string;
+  bookingId: string;
+  userId: string;
+  rating: number;
+  comments: string;
+  createdAt: string;
+}
 
 export interface FeedbackRequest {
   bookingId: string;
@@ -130,92 +65,226 @@ export interface FeedbackRequest {
   comment: string;
 }
 
+// Map backend status to frontend status (5 statuses only)
+const mapStatus = (status: string): BookingStatus => {
+  const statusMap: Record<string, BookingStatus> = {
+    'Draft': 'Pending',
+    'Pending': 'Pending',
+    'Pending_Approval': 'Pending',
+    'Approved': 'Approved',
+    'Completed': 'Finish',
+    'Cancelled': 'Cancelled',
+    'Rejected': 'Rejected',
+  };
+  return statusMap[status] || 'Pending';
+};
+
+// Map facility type
+const mapFacilityType = (typeName: string): FacilityType => {
+  const typeMap: Record<string, FacilityType> = {
+    'Classroom': 'Classroom',
+    'Meeting Room': 'Meeting Room',
+    'Computer Lab': 'Laboratory',
+    'Sports Court': 'Sport Facility',
+    'Auditorium': 'Auditorium',
+    'Laboratory': 'Laboratory',
+    'Sport Facility': 'Sport Facility',
+    'Library': 'Library',
+  };
+  return typeMap[typeName] || 'Classroom';
+};
+
+// Map backend booking to frontend UserBooking
+const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbackResponse): UserBooking => {
+  const startDate = new Date(b.startTime);
+  const endDate = new Date(b.endTime);
+  
+  return {
+    id: b.bookingId,
+    lessonBookingId: b.bookingId,
+    lessonBookingDate: b.startTime.split('T')[0],
+    facilityId: b.facilityId,
+    facility: {
+      id: b.facilityId,
+      name: b.facilityName || 'Unknown Facility',
+      campus: (b.campusName?.includes('NVH') || b.campusName?.includes('Nhà Văn Hóa') || b.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
+      type: mapFacilityType(b.typeName || 'Classroom'),
+      capacity: b.facilityCapacity || 0,
+      location: `${b.facilityRoomNumber || ''}, Tầng ${b.facilityFloorNumber || ''}`,
+      amenities: [],
+      imageUrl: '/images/default-facility.jpg',
+      isActive: true,
+      description: b.facilityDescription || '',
+    },
+    date: b.startTime.split('T')[0],
+    startTime: startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    endTime: endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    purpose: b.purpose,
+    numberOfPeople: b.estimatedAttendees,
+    status: mapStatus(b.status),
+    createdAt: b.createdAt,
+    rejectionReason: b.rejectionReason,
+    feedback: feedback ? {
+      id: feedback.feedbackId,
+      rating: feedback.rating,
+      comment: feedback.comments,
+      createdAt: feedback.createdAt,
+    } : undefined,
+  };
+};
+
+// Helper to check if backend status matches frontend filter (5 statuses)
+const statusMatchesFilter = (backendStatus: string, filterStatus: BookingStatus): boolean => {
+  switch (filterStatus) {
+    case 'Pending':
+      return ['Draft', 'Pending', 'Pending_Approval'].includes(backendStatus);
+    case 'Approved':
+      return backendStatus === 'Approved';
+    case 'Finish':
+      return backendStatus === 'Completed';
+    case 'Cancelled':
+      return backendStatus === 'Cancelled';
+    case 'Rejected':
+      return backendStatus === 'Rejected';
+    default:
+      return true;
+  }
+};
+
 export const myBookingsApi = {
-  // Get all bookings for current user
+  // Get all bookings for current user - API ONLY
   getMyBookings: async (status?: BookingStatus): Promise<UserBooking[]> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let bookings = [...mockUserBookings];
+    try {
+      // Always fetch all bookings, filter on client side
+      const params: Record<string, string | number | undefined> = {
+        page: 1,
+        limit: 100,
+      };
+      
+      const url = buildUrl(API_ENDPOINTS.BOOKING.GET_MY_BOOKINGS, params);
+      console.log('Fetching my bookings from:', url);
+      
+      const response = await apiFetch<BackendBookingResponse[]>(url);
+      console.log('My bookings response:', response);
+      
+      if (response.success && response.data) {
+        // Get all feedbacks for these bookings
+        const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { limit: 100 });
+        const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
+        const feedbacks = feedbackResponse.success && feedbackResponse.data ? feedbackResponse.data : [];
         
+        // Filter by status first (using original backend status), then map
+        let filteredData = response.data;
         if (status) {
-          bookings = bookings.filter(b => b.status === status);
+          filteredData = response.data.filter(b => statusMatchesFilter(b.status, status));
         }
         
-        // Sort by date descending (newest first)
+        // Map bookings with their feedbacks
+        const bookings = filteredData.map(booking => {
+          const feedback = feedbacks.find(f => f.bookingId === booking.bookingId);
+          return mapBookingResponse(booking, feedback);
+        });
+        
+        // Sort by date descending
         bookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
-        resolve(bookings);
-      }, 300);
-    });
+        return bookings;
+      }
+      
+      console.error('API Error:', response.error);
+      return [];
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      return [];
+    }
   },
 
-  // Get booking by ID
+  // Get booking by ID - API ONLY
   getBookingById: async (id: string): Promise<UserBooking | null> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const booking = mockUserBookings.find(b => b.id === id);
-        resolve(booking || null);
-      }, 200);
-    });
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.GET_BY_ID(id)}`;
+      const response = await apiFetch<BackendBookingResponse>(url);
+      
+      if (response.success && response.data) {
+        // Get feedback for this booking
+        const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { bookingId: id });
+        const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
+        const feedback = feedbackResponse.success && feedbackResponse.data?.length 
+          ? feedbackResponse.data[0] 
+          : undefined;
+        
+        return mapBookingResponse(response.data, feedback);
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching booking:', error);
+      return null;
+    }
   },
 
-  // Submit feedback for a completed booking
+  // Submit feedback for a completed booking - API ONLY
   submitFeedback: async (request: FeedbackRequest): Promise<{ success: boolean; message: string }> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const booking = mockUserBookings.find(b => b.id === request.bookingId);
-        
-        if (!booking) {
-          resolve({ success: false, message: 'Không tìm thấy đơn đặt phòng' });
-          return;
-        }
-        
-        if (booking.status !== 'completed') {
-          resolve({ success: false, message: 'Chỉ có thể đánh giá sau khi đã sử dụng phòng' });
-          return;
-        }
-        
-        if (booking.feedback) {
-          resolve({ success: false, message: 'Bạn đã đánh giá đơn đặt phòng này rồi' });
-          return;
-        }
-        
-        // Add feedback to booking
-        booking.feedback = {
-          id: `FB${Date.now()}`,
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.FEEDBACK.CREATE}`;
+      console.log('Submitting feedback:', request);
+      
+      const response = await apiFetch<BackendFeedbackResponse>(url, {
+        method: 'POST',
+        body: JSON.stringify({
+          bookingId: request.bookingId,
           rating: request.rating,
-          comment: request.comment,
-          createdAt: new Date().toISOString()
-        };
-        
-        resolve({ success: true, message: 'Đánh giá thành công! Cảm ơn bạn đã góp ý.' });
-      }, 500);
-    });
+          comments: request.comment, // Backend uses 'comments' field
+        }),
+      });
+      
+      console.log('Feedback response:', response);
+      
+      if (response.success) {
+        return { success: true, message: 'Đánh giá thành công! Cảm ơn bạn đã góp ý.' };
+      }
+      
+      return { 
+        success: false, 
+        message: response.error?.message || 'Không thể gửi đánh giá. Vui lòng thử lại.' 
+      };
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      return { 
+        success: false, 
+        message: 'Không thể kết nối đến server.' 
+      };
+    }
   },
 
-  // Cancel a pending booking
+  // Cancel a pending/approved booking - API ONLY
   cancelBooking: async (id: string): Promise<{ success: boolean; message: string }> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const booking = mockUserBookings.find(b => b.id === id);
-        
-        if (!booking) {
-          resolve({ success: false, message: 'Không tìm thấy đơn đặt phòng' });
-          return;
-        }
-        
-        if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-          resolve({ success: false, message: 'Không thể hủy đơn đặt phòng này' });
-          return;
-        }
-        
-        booking.status = 'cancelled';
-        resolve({ success: true, message: 'Đã hủy đặt phòng thành công' });
-      }, 300);
-    });
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CANCEL(id)}`;
+      console.log('Cancelling booking:', id);
+      
+      const response = await apiFetch(url, {
+        method: 'DELETE',
+      });
+      
+      if (response.success) {
+        return { success: true, message: 'Đã hủy đặt phòng thành công' };
+      }
+      
+      return { 
+        success: false, 
+        message: response.error?.message || 'Không thể hủy đặt phòng.' 
+      };
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      return { 
+        success: false, 
+        message: 'Không thể kết nối đến server.' 
+      };
+    }
   },
 
-  // Get booking statistics
+  // Get booking statistics - API ONLY
   getBookingStats: async (): Promise<{
     total: number;
     pending: number;
@@ -224,20 +293,48 @@ export const myBookingsApi = {
     cancelled: number;
     feedbackGiven: number;
   }> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          total: mockUserBookings.length,
-          pending: mockUserBookings.filter(b => b.status === 'pending').length,
-          confirmed: mockUserBookings.filter(b => b.status === 'confirmed').length,
-          completed: mockUserBookings.filter(b => b.status === 'completed').length,
-          cancelled: mockUserBookings.filter(b => b.status === 'cancelled' || b.status === 'rejected').length,
-          feedbackGiven: mockUserBookings.filter(b => b.feedback).length,
-        });
-      }, 200);
-    });
+    try {
+      // Fetch all bookings to calculate stats
+      const url = buildUrl(API_ENDPOINTS.BOOKING.GET_MY_BOOKINGS, { limit: 1000 });
+      const response = await apiFetch<BackendBookingResponse[]>(url);
+      
+      if (response.success && response.data) {
+        const bookings = response.data;
+        
+        // Get feedbacks
+        const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { limit: 1000 });
+        const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
+        const feedbacks = feedbackResponse.success && feedbackResponse.data ? feedbackResponse.data : [];
+        
+        return {
+          total: bookings.length,
+          pending: bookings.filter(b => ['Draft', 'Pending', 'Pending_Approval'].includes(b.status)).length,
+          approved: bookings.filter(b => b.status === 'Approved').length,
+          finish: bookings.filter(b => b.status === 'Completed').length,
+          rejected: bookings.filter(b => b.status === 'Rejected').length,
+          cancelled: bookings.filter(b => b.status === 'Cancelled').length,
+          feedbackGiven: feedbacks.length,
+        };
+      }
+      
+      return {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        feedbackGiven: 0,
+      };
+    } catch (error) {
+      console.error('Error fetching booking stats:', error);
+      return {
+        total: 0,
+        pending: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        feedbackGiven: 0,
+      };
+    }
   }
 };
-
-
-

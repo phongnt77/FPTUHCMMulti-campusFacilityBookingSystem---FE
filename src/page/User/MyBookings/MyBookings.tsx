@@ -15,7 +15,7 @@ const MyBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [stats, setStats] = useState({
-    total: 0, pending: 0, confirmed: 0, completed: 0, cancelled: 0, feedbackGiven: 0
+    total: 0, pending: 0, approved: 0, finish: 0, rejected: 0, cancelled: 0, feedbackGiven: 0
   });
 
   // Feedback Modal State
@@ -47,54 +47,66 @@ const MyBookingsPage = () => {
   }, [loadBookings]);
 
   const getStatusConfig = (status: BookingStatus) => {
-    const configs = {
-      pending: {
+    const configs: Record<string, { label: string; color: string; icon: JSX.Element }> = {
+      'Pending': {
         label: 'Chờ duyệt',
         color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
         icon: <Clock3 className="w-4 h-4" />
       },
-      confirmed: {
+      'Approved': {
         label: 'Đã duyệt',
         color: 'bg-blue-100 text-blue-700 border-blue-200',
         icon: <CheckCircle2 className="w-4 h-4" />
       },
-      completed: {
-        label: 'Hoàn thành',
+      'Finish': {
+        label: 'Đã hoàn thành',
         color: 'bg-green-100 text-green-700 border-green-200',
         icon: <CheckCircle2 className="w-4 h-4" />
       },
-      cancelled: {
+      'Rejected': {
+        label: 'Từ chối',
+        color: 'bg-red-100 text-red-700 border-red-200',
+        icon: <XCircle className="w-4 h-4" />
+      },
+      'Cancelled': {
         label: 'Đã hủy',
         color: 'bg-gray-100 text-gray-700 border-gray-200',
         icon: <XCircle className="w-4 h-4" />
       },
-      rejected: {
-        label: 'Bị từ chối',
-        color: 'bg-red-100 text-red-700 border-red-200',
-        icon: <XCircle className="w-4 h-4" />
-      }
     };
-    return configs[status];
+    return configs[status] || configs['Pending'];
   };
 
   const getFacilityTypeIcon = (type: FacilityType) => {
     switch (type) {
+      case 'Meeting Room':
       case 'meeting-room':
+      case 'Classroom':
         return <Building2 className="w-5 h-5" />;
+      case 'Laboratory':
       case 'lab-room':
         return <FlaskConical className="w-5 h-5" />;
+      case 'Sport Facility':
       case 'sports-field':
         return <Trophy className="w-5 h-5" />;
+      default:
+        return <Building2 className="w-5 h-5" />;
     }
   };
 
   const getFacilityTypeColor = (type: FacilityType) => {
-    const colors = {
+    const colors: Record<string, { bg: string; text: string }> = {
+      'Classroom': { bg: 'bg-blue-100', text: 'text-blue-600' },
+      'Meeting Room': { bg: 'bg-violet-100', text: 'text-violet-600' },
       'meeting-room': { bg: 'bg-violet-100', text: 'text-violet-600' },
+      'Laboratory': { bg: 'bg-amber-100', text: 'text-amber-600' },
       'lab-room': { bg: 'bg-amber-100', text: 'text-amber-600' },
-      'sports-field': { bg: 'bg-emerald-100', text: 'text-emerald-600' }
+      'Sport Facility': { bg: 'bg-emerald-100', text: 'text-emerald-600' },
+      'sports-field': { bg: 'bg-emerald-100', text: 'text-emerald-600' },
+      'Auditorium': { bg: 'bg-rose-100', text: 'text-rose-600' },
+      'Library': { bg: 'bg-cyan-100', text: 'text-cyan-600' },
     };
-    return colors[type];
+    return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-600' };
   };
 
   const formatDate = (dateString: string) => {
@@ -196,13 +208,14 @@ const MyBookingsPage = () => {
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
           {[
             { label: 'Tổng đơn', value: stats.total, color: 'bg-gray-100 text-gray-700' },
             { label: 'Chờ duyệt', value: stats.pending, color: 'bg-yellow-100 text-yellow-700' },
-            { label: 'Đã duyệt', value: stats.confirmed, color: 'bg-blue-100 text-blue-700' },
-            { label: 'Hoàn thành', value: stats.completed, color: 'bg-green-100 text-green-700' },
-            { label: 'Đã hủy', value: stats.cancelled, color: 'bg-red-100 text-red-700' },
+            { label: 'Đã duyệt', value: stats.approved, color: 'bg-blue-100 text-blue-700' },
+            { label: 'Đã hoàn thành', value: stats.finish, color: 'bg-green-100 text-green-700' },
+            { label: 'Từ chối', value: stats.rejected, color: 'bg-red-100 text-red-700' },
+            { label: 'Đã hủy', value: stats.cancelled, color: 'bg-orange-100 text-orange-700' },
             { label: 'Đã đánh giá', value: stats.feedbackGiven, color: 'bg-purple-100 text-purple-700' }
           ].map((stat) => (
             <div key={stat.label} className={`${stat.color} rounded-xl p-4 text-center`}>
@@ -217,11 +230,11 @@ const MyBookingsPage = () => {
           <div className="flex gap-2 min-w-max">
             {[
               { key: 'all', label: 'Tất cả' },
-              { key: 'pending', label: 'Chờ duyệt' },
-              { key: 'confirmed', label: 'Đã duyệt' },
-              { key: 'completed', label: 'Hoàn thành' },
-              { key: 'cancelled', label: 'Đã hủy' },
-              { key: 'rejected', label: 'Bị từ chối' }
+              { key: 'Pending', label: 'Chờ duyệt' },
+              { key: 'Approved', label: 'Đã duyệt' },
+              { key: 'Finish', label: 'Đã hoàn thành' },
+              { key: 'Rejected', label: 'Từ chối' },
+              { key: 'Cancelled', label: 'Đã hủy' }
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -511,6 +524,8 @@ const MyBookingsPage = () => {
 };
 
 export default MyBookingsPage;
+
+
 
 
 

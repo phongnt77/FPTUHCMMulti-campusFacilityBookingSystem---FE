@@ -7,10 +7,12 @@ import {
 } from 'lucide-react';
 import type { Facility, FacilityType } from '../../../types';
 import { bookingApi, type TimeSlot, type BookingRequest } from './api/api';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const BookingPage = () => {
   const { facilityId } = useParams<{ facilityId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   // States
   const [facility, setFacility] = useState<Facility | null>(null);
@@ -74,44 +76,88 @@ const BookingPage = () => {
 
   // Helper functions
   const getFacilityTypeLabel = (type: FacilityType): string => {
-    const labels: Record<FacilityType, string> = {
+    const labels: Record<string, string> = {
+      'Classroom': 'Phòng học',
+      'Meeting Room': 'Phòng họp',
+      'Laboratory': 'Phòng Lab',
+      'Sport Facility': 'Sân thể thao',
+      'Auditorium': 'Hội trường',
+      'Library': 'Thư viện',
       'meeting-room': 'Phòng họp',
       'lab-room': 'Phòng Lab',
       'sports-field': 'Sân thể thao',
     };
-    return labels[type];
+    return labels[type] || type;
   };
 
   const getFacilityTypeIcon = (type: FacilityType) => {
     switch (type) {
+      case 'Meeting Room':
       case 'meeting-room':
+      case 'Classroom':
         return <Building2 className="w-6 h-6" />;
+      case 'Laboratory':
       case 'lab-room':
         return <FlaskConical className="w-6 h-6" />;
+      case 'Sport Facility':
       case 'sports-field':
         return <Trophy className="w-6 h-6" />;
+      case 'Auditorium':
+      case 'Library':
+      default:
+        return <Building2 className="w-6 h-6" />;
     }
   };
 
   const getFacilityTypeColor = (type: FacilityType) => {
-    const colors: Record<FacilityType, { bg: string; text: string; gradient: string }> = {
+    const colors: Record<string, { bg: string; text: string; gradient: string }> = {
+      'Classroom': { 
+        bg: 'bg-blue-100', 
+        text: 'text-blue-700',
+        gradient: 'from-blue-500 to-indigo-600'
+      },
+      'Meeting Room': { 
+        bg: 'bg-violet-100', 
+        text: 'text-violet-700',
+        gradient: 'from-violet-500 to-purple-600'
+      },
       'meeting-room': { 
         bg: 'bg-violet-100', 
         text: 'text-violet-700',
         gradient: 'from-violet-500 to-purple-600'
+      },
+      'Laboratory': { 
+        bg: 'bg-amber-100', 
+        text: 'text-amber-700',
+        gradient: 'from-amber-500 to-orange-600'
       },
       'lab-room': { 
         bg: 'bg-amber-100', 
         text: 'text-amber-700',
         gradient: 'from-amber-500 to-orange-600'
       },
+      'Sport Facility': { 
+        bg: 'bg-emerald-100', 
+        text: 'text-emerald-700',
+        gradient: 'from-emerald-500 to-teal-600'
+      },
       'sports-field': { 
         bg: 'bg-emerald-100', 
         text: 'text-emerald-700',
         gradient: 'from-emerald-500 to-teal-600'
       },
+      'Auditorium': { 
+        bg: 'bg-rose-100', 
+        text: 'text-rose-700',
+        gradient: 'from-rose-500 to-pink-600'
+      },
+      'Library': { 
+        bg: 'bg-cyan-100', 
+        text: 'text-cyan-700',
+        gradient: 'from-cyan-500 to-teal-600'
+      },
     };
-    return colors[type];
+    return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-700', gradient: 'from-gray-500 to-gray-600' };
   };
 
   const formatDate = (dateString: string): string => {
@@ -154,12 +200,13 @@ const BookingPage = () => {
   };
 
   const handleSubmitBooking = async () => {
-    if (!facility || !selectedSlot || !canSubmit) return;
+    if (!facility || !selectedSlot || !canSubmit || !user) return;
 
     setSubmitting(true);
     try {
       const bookingRequest: BookingRequest = {
         facilityId: facility.id,
+        userId: user.user_id,
         date: selectedDate,
         timeSlotId: selectedSlot.id,
         startTime: selectedSlot.startTime,
@@ -350,40 +397,107 @@ const BookingPage = () => {
               </div>
 
               <div className="p-6 space-y-6">
-                {/* Date Selection */}
+                {/* Date Selection - Visual Calendar */}
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-3">
                     <Calendar className="w-4 h-4 inline mr-2" />
-                    Chọn ngày
+                    Chọn ngày đặt phòng
                   </label>
-                  <div className="flex items-center gap-3">
+                  
+                  {/* Week Navigation */}
+                  <div className="flex items-center justify-between mb-3">
                     <button
-                      onClick={() => changeDate(-1)}
-                      disabled={selectedDate === getMinDate()}
-                      className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => changeDate(-7)}
+                      disabled={new Date(selectedDate).getTime() - 7 * 24 * 60 * 60 * 1000 < new Date(getMinDate()).getTime()}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                      <ChevronLeft className="w-4 h-4" />
+                      Tuần trước
                     </button>
-                    <div className="flex-1">
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
-                        min={getMinDate()}
-                        max={getMaxDate()}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-center font-medium"
-                      />
-                      <p className="text-center text-sm text-gray-500 mt-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      {new Date(selectedDate).toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button
+                      onClick={() => changeDate(7)}
+                      disabled={new Date(selectedDate).getTime() + 7 * 24 * 60 * 60 * 1000 > new Date(getMaxDate()).getTime()}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Tuần sau
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Calendar Grid - Show 14 days */}
+                  <div className="grid grid-cols-7 gap-2 mb-3">
+                    {/* Day headers */}
+                    {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
+                      <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+                        {day}
+                      </div>
+                    ))}
+                    
+                    {/* Date buttons - Show next 14 days */}
+                    {Array.from({ length: 14 }, (_, i) => {
+                      const date = new Date();
+                      date.setDate(date.getDate() + i);
+                      const dateStr = date.toISOString().split('T')[0];
+                      const isSelected = dateStr === selectedDate;
+                      const isToday = i === 0;
+                      const dayOfWeek = date.getDay();
+                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                      
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => setSelectedDate(dateStr)}
+                          className={`relative p-2 rounded-lg text-center transition-all ${
+                            isSelected
+                              ? `bg-gradient-to-r ${colors.gradient} text-white shadow-md`
+                              : isToday
+                              ? 'bg-orange-50 text-orange-700 border-2 border-orange-300 hover:bg-orange-100'
+                              : isWeekend
+                              ? 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                          }`}
+                        >
+                          <div className="text-lg font-semibold">{date.getDate()}</div>
+                          <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
+                            {date.toLocaleDateString('vi-VN', { weekday: 'short' })}
+                          </div>
+                          {isToday && !isSelected && (
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Selected date display */}
+                  <div className={`p-3 rounded-lg ${colors.bg} flex items-center justify-between`}>
+                    <div className="flex items-center gap-2">
+                      <Calendar className={`w-5 h-5 ${colors.text}`} />
+                      <span className={`font-medium ${colors.text}`}>
                         {formatDate(selectedDate)}
-                      </p>
+                      </span>
                     </div>
-                    <button
-                      onClick={() => changeDate(1)}
-                      disabled={selectedDate === getMaxDate()}
-                      className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5 text-gray-600" />
-                    </button>
+                    {selectedDate === getMinDate() && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full bg-white/50 ${colors.text}`}>
+                        Hôm nay
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Alternative: Native date picker for accessibility */}
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Hoặc chọn ngày cụ thể:</span>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      min={getMinDate()}
+                      max={getMaxDate()}
+                      className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                    />
                   </div>
                 </div>
 
@@ -635,12 +749,20 @@ const BookingPage = () => {
                   <p className="text-sm text-gray-500 mb-6">
                     Mã đặt phòng: <span className="font-mono font-semibold text-gray-900">{bookingId}</span>
                   </p>
-                  <button
-                    onClick={handleCloseSuccessAndRedirect}
-                    className={`px-6 py-2.5 bg-gradient-to-r ${colors.gradient} text-white rounded-xl font-medium hover:opacity-90 transition-opacity`}
-                  >
-                    Quay lại danh sách
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={() => navigate('/my-bookings')}
+                      className={`px-6 py-2.5 bg-gradient-to-r ${colors.gradient} text-white rounded-xl font-medium hover:opacity-90 transition-opacity`}
+                    >
+                      Xem lịch sử đặt
+                    </button>
+                    <button
+                      onClick={handleCloseSuccessAndRedirect}
+                      className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                    >
+                      Đặt phòng khác
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -652,6 +774,7 @@ const BookingPage = () => {
 };
 
 export default BookingPage;
+
 
 
 
