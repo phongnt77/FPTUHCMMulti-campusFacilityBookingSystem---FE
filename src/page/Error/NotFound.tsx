@@ -9,9 +9,9 @@ const NotFound = () => {
           <AlertCircle className="h-10 w-10 text-orange-600" />
         </div>
         <h1 className="mb-3 text-5xl font-bold text-gray-900">404</h1>
-        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Page Not Found</h2>
+        <h2 className="mb-2 text-2xl font-semibold text-gray-800">Không tìm thấy trang</h2>
         <p className="mb-8 text-gray-600">
-          The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+          Trang bạn đang tìm có thể đã bị xóa, đổi tên hoặc tạm thời không khả dụng.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -19,13 +19,13 @@ const NotFound = () => {
             className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 transition-colors"
           >
             <Home className="h-4 w-4" />
-            Go to Home
+            Về trang chủ
           </Link>
           <button
             onClick={() => window.history.back()}
             className="rounded-lg border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Go Back
+            Quay lại
           </button>
         </div>
       </div>

@@ -9,49 +9,41 @@ const Footer = () => {
         <div className="grid gap-8 md:grid-cols-3">
           <div className="space-y-3 text-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">
-              About Us
+              Về chúng tôi
             </p>
             <p className="text-sm font-semibold text-white">FPTU Multi‑campus Facility Booking</p>
             <p className="text-xs text-gray-400">
-              A comprehensive booking system designed for students and lecturers to explore, request and manage facility
-              usage across HCM & NVH campuses. Streamline your study, teaching and event planning with real-time
-              availability and smart scheduling.
+              Một hệ thống đặt phòng thông minh được thiết kế cho sinh viên và giảng viên để khám phá, yêu cầu và quản lý việc sử dụng cơ sở vật chất trên các campus HCM & NVH. Rút ngắn thời gian học tập, giảng dạy và lập kế hoạch sự kiện với sự sẵn sàng thời gian thực và lập lịch thông minh.
             </p>
           </div>
 
           <div className="space-y-3 text-xs">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Navigation</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Điều hướng</p>
             <ul className="space-y-2">
               <li>
                 <Link to="/" className="hover:text-orange-400 transition-colors">
-                  Home
+                  Trang chủ
                 </Link>
               </li>
               <li>
                 <Link to="/user/facilities" className="hover:text-orange-400 transition-colors">
-                  Facilities
+                  Cơ sở vật chất
                 </Link>
               </li>
             </ul>
           </div>
 
           <div className="space-y-3 text-xs">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Contact Us</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Liên hệ chúng tôi</p>
             <div className="space-y-2 text-gray-400">
               <p>
-                <span className="font-semibold text-gray-300">Email:</span>{' '}
-                <a href="mailto:facility.support@fpt.edu.vn" className="hover:text-orange-400 transition-colors">
-                  facility.support@fpt.edu.vn
-                </a>
+                <span className="font-semibold text-gray-300">Campus Khu Công Nghệ Cao:</span> phường Tân Phú, Thành phố Thủ Đức, TPHCM
               </p>
               <p>
-                <span className="font-semibold text-gray-300">HCM Campus:</span> District 9, Ho Chi Minh City
-              </p>
-              <p>
-                <span className="font-semibold text-gray-300">NVH Campus:</span> Di An Ward, Ho Chi Minh City
+                <span className="font-semibold text-gray-300">Campus NVH:</span> Nhà văn hóa Sinh viên, phường Dĩ An, TPHCM
               </p>
               <p className="pt-2 text-gray-500">
-                For booking support or facility inquiries, please contact the facility office or follow your campus
+                Để được hỗ trợ đặt phòng hoặc yêu cầu về cơ sở vật chất, vui lòng liên hệ văn phòng cơ sở vật chất hoặc tuân theo hướng dẫn của campus
                 guidelines.
               </p>
             </div>

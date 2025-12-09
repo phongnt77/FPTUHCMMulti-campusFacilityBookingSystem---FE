@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../hooks/useAuth'
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 type LoginOption = 'account' | 'google'
@@ -15,7 +15,6 @@ const LoginPage = () => {
   const [option, setOption] = useState<LoginOption>('account')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [email, setEmail] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -98,7 +97,7 @@ const LoginPage = () => {
             FPTU Multi‑campus Facility Booking
           </h1>
           <p className="mb-6 text-sm text-gray-600">
-            Sign in to book classrooms, labs, and sport areas across HCM & NVH campuses.
+            Đăng nhập để đặt phòng phòng học, phòng lab và sân thể thao trên các campus Khu Công Nghệ Cao & NVH.
           </p>
 
           <div className="mb-6 inline-flex rounded-full bg-gray-100 p-1 text-xs font-medium">
@@ -113,7 +112,7 @@ const LoginPage = () => {
                 option === 'account' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-600'
               }`}
             >
-              University account (K19+ students)
+              Tài khoản đại học (sinh viên K19+)
             </button>
             <button
               type="button"
@@ -126,7 +125,7 @@ const LoginPage = () => {
                 option === 'google' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-600'
               }`}
             >
-              FPT email (K18 students & lecturers)
+              Email FPT (sinh viên K18 & giảng viên)
             </button>
           </div>
 
@@ -150,28 +149,28 @@ const LoginPage = () => {
             <form className="space-y-4" onSubmit={handleAccountLogin}>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-700" htmlFor="username">
-                  Username
+                  Tên đăng nhập
                 </label>
                 <input
                   id="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g. SE1001"
+                  placeholder="VD: SE1001"
                   disabled={loading}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-gray-700" htmlFor="password">
-                  Password
+                  Mật khẩu
                 </label>
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Nhập mật khẩu của bạn"
                   disabled={loading}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100"
                 />
@@ -184,10 +183,10 @@ const LoginPage = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="h-3 w-3 rounded border-gray-300 text-orange-500" 
                   />
-                  <span>Remember this device</span>
+                  <span>Nhớ thiết bị này</span>
                 </label>
                 <button type="button" className="font-semibold text-orange-600 hover:text-orange-700">
-                  Forgot password?
+                  Quên mật khẩu?
                 </button>
               </div>
               <button
@@ -201,20 +200,20 @@ const LoginPage = () => {
                     <span>Đang đăng nhập...</span>
                   </>
                 ) : (
-                  'Sign in with university account'
+                  'Đăng nhập với tài khoản đại học'
                 )}
               </button>
 
               {/* Demo hint */}
               <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-                <strong>Demo:</strong> Nhập username (VD: SE1001, LEC001) và bất kỳ password nào để đăng nhập.
+                <strong>Demo:</strong> Nhập tên đăng nhập (VD: SE1001, LEC001) và bất kỳ mật khẩu nào để đăng nhập.
               </div>
             </form>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Use your official FPT email account (<strong>@fpt.edu.vn</strong>) to continue. This option is
-                recommended for K18 students and lecturers.
+                Sử dụng tài khoản email FPT (<strong>@fpt.edu.vn</strong>) để tiếp tục. Tùy chọn này được
+                khuyến nghị cho sinh viên K18 và giảng viên.
               </p>
               <button
                 type="button"
@@ -232,18 +231,18 @@ const LoginPage = () => {
                     <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-red-500 text-[10px] font-bold text-white">
                       G
                     </span>
-                    <span>Sign in with FPT email</span>
+                    <span>Đăng nhập với email FPT</span>
                   </>
                 )}
               </button>
               <p className="text-xs text-gray-500">
-                We only accept accounts that end with <strong>@fpt.edu.vn</strong>. Your email is used for
-                authentication and booking notifications.
+                Chúng tôi chỉ chấp nhận tài khoản mà email kết thúc với <strong>@fpt.edu.vn</strong>. Email của bạn được sử dụng để
+                xác thực và thông báo đặt phòng.
               </p>
 
               {/* Demo hint */}
               <div className="mt-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
-                <strong>Demo:</strong> Click nút trên và nhập email (VD: student1@fpt.edu.vn, lecturer1@fpt.edu.vn)
+                <strong>Demo:</strong> Nhấp vào nút trên và nhập email (VD: student1@fpt.edu.vn, lecturer1@fpt.edu.vn)
               </div>
             </div>
           )}
@@ -252,30 +251,30 @@ const LoginPage = () => {
         <aside className="hidden flex-col justify-between rounded-xl bg-gradient-to-br from-orange-500 via-orange-600 to-purple-600 p-6 text-xs text-orange-50 sm:flex">
           <div>
             <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-orange-100">
-              System highlights
+              Nổi bật của hệ thống
             </p>
             <ul className="space-y-2">
               <li className="flex gap-2">
                 <span className="mt-0.5 text-orange-200">•</span>
-                <span>Book classrooms, labs, and sport facilities with real‑time availability.</span>
+                <span>Đặt phòng phòng học, phòng lab và sân thể thao với sự sẵn sàng thời gian thực.</span>
               </li>
               <li className="flex gap-2">
                 <span className="mt-0.5 text-orange-200">•</span>
-                <span>Integrated approval flow for special events and external activities.</span>
+                <span>Dòng phê duyệt tích hợp cho sự kiện đặc biệt và hoạt động bên ngoài.</span>
               </li>
               <li className="flex gap-2">
                 <span className="mt-0.5 text-orange-200">•</span>
-                <span>Usage history and booking statistics for better campus planning.</span>
+                <span>Lịch sử sử dụng và thống kê đặt phòng để cải thiện kế hoạch campus.</span>
               </li>
             </ul>
           </div>
 
           <div className="mt-6 rounded-lg bg-white/10 p-4 backdrop-blur">
-            <p className="mb-1 text-sm font-semibold text-white">Demo Accounts</p>
+            <p className="mb-1 text-sm font-semibold text-white">Tài khoản Demo</p>
             <ul className="space-y-1">
               <li>• <strong>Students:</strong> SE1001, SE1002, SE1003</li>
               <li>• <strong>Lecturers:</strong> LEC001, LEC002, LEC003</li>
-              <li>• <strong>Password:</strong> bất kỳ (demo mode)</li>
+              <li>• <strong>Mật khẩu:</strong> bất kỳ (chế độ demo)</li>
             </ul>
           </div>
         </aside>
