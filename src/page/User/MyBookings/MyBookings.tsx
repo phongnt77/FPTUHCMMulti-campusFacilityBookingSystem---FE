@@ -280,8 +280,8 @@ const MyBookingsPage = () => {
             {bookings.map((booking) => {
               const statusConfig = getStatusConfig(booking.status);
               const facilityColors = getFacilityTypeColor(booking.facility.type);
-              const canFeedback = booking.status === 'completed' && !booking.feedback;
-              const canCancel = booking.status === 'pending' || booking.status === 'confirmed';
+              const canFeedback = booking.status === 'Finish' && !booking.feedback;
+              const canCancel = booking.status === 'Pending' || booking.status === 'Approved';
 
               return (
                 <div
@@ -331,7 +331,7 @@ const MyBookingsPage = () => {
                         </p>
 
                         {/* Rejection Reason */}
-                        {booking.status === 'rejected' && booking.rejectionReason && (
+                        {booking.status === 'Rejected' && booking.rejectionReason && (
                           <div className="mt-2 flex items-start gap-2 p-2 bg-red-50 rounded-lg">
                             <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-red-700">
@@ -524,8 +524,3 @@ const MyBookingsPage = () => {
 };
 
 export default MyBookingsPage;
-
-
-
-
-

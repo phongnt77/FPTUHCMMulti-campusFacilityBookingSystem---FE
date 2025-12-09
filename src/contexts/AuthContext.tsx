@@ -1,8 +1,8 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { type User } from '../data/userMockData';
 import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
-import { AuthContext, type AuthContextType } from './AuthContext';
 import { clearAuth } from '../utils/auth';
+import { AuthContext, type AuthContextType } from './authContext';
 
 interface AuthProviderProps {
   children: ReactNode;

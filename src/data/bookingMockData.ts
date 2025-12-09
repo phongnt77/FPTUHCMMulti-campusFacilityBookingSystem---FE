@@ -1,11 +1,11 @@
 // Mock booking data based on database schema
-import type { Booking, Facility, User } from '../types'
+import type { Booking } from '../types'
 import { mockFacilities, mockUsers } from './adminMockData'
 
 export interface BookingDetail extends Booking {
   category?: string
   estimated_attendees?: number
-  special_requirements?: Record<string, any>
+  special_requirements?: Record<string, unknown>
   rejection_reason?: string
   approved_by?: string
   approved_at?: Date

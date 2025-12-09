@@ -288,8 +288,9 @@ export const myBookingsApi = {
   getBookingStats: async (): Promise<{
     total: number;
     pending: number;
-    confirmed: number;
-    completed: number;
+    approved: number;
+    finish: number;
+    rejected: number;
     cancelled: number;
     feedbackGiven: number;
   }> => {
@@ -306,13 +307,16 @@ export const myBookingsApi = {
         const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
         const feedbacks = feedbackResponse.success && feedbackResponse.data ? feedbackResponse.data : [];
         
+        // Map backend statuses to frontend statuses for stats
+        const mappedBookings = bookings.map(b => mapStatus(b.status));
+        
         return {
           total: bookings.length,
-          pending: bookings.filter(b => ['Draft', 'Pending', 'Pending_Approval'].includes(b.status)).length,
-          approved: bookings.filter(b => b.status === 'Approved').length,
-          finish: bookings.filter(b => b.status === 'Completed').length,
-          rejected: bookings.filter(b => b.status === 'Rejected').length,
-          cancelled: bookings.filter(b => b.status === 'Cancelled').length,
+          pending: mappedBookings.filter(s => s === 'Pending').length,
+          approved: mappedBookings.filter(s => s === 'Approved').length,
+          finish: mappedBookings.filter(s => s === 'Finish').length,
+          rejected: mappedBookings.filter(s => s === 'Rejected').length,
+          cancelled: mappedBookings.filter(s => s === 'Cancelled').length,
           feedbackGiven: feedbacks.length,
         };
       }
@@ -320,8 +324,9 @@ export const myBookingsApi = {
       return {
         total: 0,
         pending: 0,
-        confirmed: 0,
-        completed: 0,
+        approved: 0,
+        finish: 0,
+        rejected: 0,
         cancelled: 0,
         feedbackGiven: 0,
       };
@@ -330,8 +335,9 @@ export const myBookingsApi = {
       return {
         total: 0,
         pending: 0,
-        confirmed: 0,
-        completed: 0,
+        approved: 0,
+        finish: 0,
+        rejected: 0,
         cancelled: 0,
         feedbackGiven: 0,
       };

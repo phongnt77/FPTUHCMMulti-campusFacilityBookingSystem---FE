@@ -3,6 +3,7 @@ import HomePage from '../../page/User/Home'
 import FacilityPage from '../../page/User/Facility'
 import BookingPage from '../../page/User/Booking'
 import ProfilePage from '../../page/User/Profile'
+import MyBookingsPage from '../../page/User/MyBookings'
 import ProtectedRoute from '../../components/ProtectedRoute'
 
 const UserRoutes = () => {
@@ -31,6 +32,14 @@ const UserRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['Student', 'Lecturer']}>
             <ProfilePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/my-bookings" 
+        element={
+          <ProtectedRoute allowedRoles={['Student', 'Lecturer']}>
+            <MyBookingsPage />
           </ProtectedRoute>
         } 
       />

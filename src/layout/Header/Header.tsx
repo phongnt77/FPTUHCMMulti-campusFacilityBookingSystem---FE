@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthState } from '../../hooks/useAuthState'
 import { logoutAPI } from '../../layout/Login/api/loginAPI'
 import { clearAuth } from '../../utils/auth'
-import { LogOut, User, ChevronDown } from 'lucide-react'
+import { LogOut, User, ChevronDown, Calendar } from 'lucide-react'
 
 const Header = () => {
   const { user, isAuthenticated } = useAuthState()
