@@ -91,7 +91,7 @@ export const apiFetch = async <T>(
   options?: RequestInit
 ): Promise<ApiResponse<T>> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = sessionStorage.getItem('auth_token');
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -107,7 +107,43 @@ export const apiFetch = async <T>(
       headers,
     });
     
-    const data = await response.json();
+    const contentType = response.headers.get('content-type');
+    let data: ApiResponse<T>;
+
+    if (contentType && contentType.includes('application/json')) {
+      const text = await response.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          return {
+            success: false,
+            error: {
+              code: response.status,
+              message: `Server returned invalid JSON. Status: ${response.status} ${response.statusText}`,
+            },
+          };
+        }
+      } else {
+        data = {
+          success: response.ok,
+          error: response.ok ? undefined : {
+            code: response.status,
+            message: response.statusText || 'Request failed',
+          },
+        };
+      }
+    } else {
+      const text = await response.text();
+      data = {
+        success: response.ok,
+        error: response.ok ? undefined : {
+          code: response.status,
+          message: text || response.statusText || 'Request failed',
+        },
+      };
+    }
+    
     return data;
   } catch (error) {
     console.error('API Error:', error);

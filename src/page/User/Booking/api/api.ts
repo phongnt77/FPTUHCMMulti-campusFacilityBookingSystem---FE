@@ -86,17 +86,43 @@ const mapFacilityType = (typeName: string): FacilityType => {
 // Generate time slots for a facility
 const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[] => {
   const slots: TimeSlot[] = [];
-  const baseDate = new Date(date);
+  
+  // Parse the date string (format: YYYY-MM-DD)
+  const baseDate = new Date(date + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  
+  // Normalize dates to compare only the date part (ignore time)
+  const baseDateOnly = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+  // Check if the selected date is in the past
+  const isPastDate = baseDateOnly.getTime() < todayOnly.getTime();
+  const isToday = baseDateOnly.getTime() === todayOnly.getTime();
+  
+  // Get current hour and minute
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
   
   // Operating hours: 7:00 - 21:00
   for (let hour = 7; hour < 21; hour++) {
-    const slotDate = new Date(baseDate);
-    slotDate.setHours(hour, 0, 0, 0);
-    
     // Past time slots are always unavailable
-    const isPastSlot = baseDate.getTime() === today.getTime() && hour <= new Date().getHours();
+    // - If the date is in the past, all slots are unavailable
+    // - If it's today, only slots before the current hour are unavailable
+    //   Example: If current time is 9:09, disable slots 7:00, 8:00, but keep 9:00 available
+    let isPastSlot = false;
+    if (isPastDate) {
+      isPastSlot = true; // Entire day is in the past
+    } else if (isToday) {
+      // Same day - disable only slots that are strictly before the current hour
+      if (hour < currentHour) {
+        isPastSlot = true; // Slot hour is before current hour
+      }
+      // Note: If current time is 9:09, slot 9:00 is still available
+      // If current time is 9:30, slot 9:00 is still available (user can book for remaining time)
+    }
+    
     const isBooked = bookedSlots.includes(`${hour.toString().padStart(2, '0')}:00`);
     
     slots.push({
@@ -143,15 +169,40 @@ export const bookingApi = {
       
       const response = await apiFetch<BackendBookingResponse[]>(url);
       
-      // Extract booked time slots
+      // Extract booked time slots - mark all hours that overlap with bookings
       const bookedSlots: string[] = [];
       if (response.success && response.data) {
         response.data.forEach(booking => {
+          // Only consider active bookings (not cancelled or rejected)
           if (booking.status !== 'Cancelled' && booking.status !== 'Rejected') {
-            const bookingDate = booking.startTime.split('T')[0];
+            const bookingStart = new Date(booking.startTime);
+            const bookingEnd = new Date(booking.endTime);
+            const bookingDate = bookingStart.toISOString().split('T')[0];
+            
+            // Check if booking is on the selected date
             if (bookingDate === date) {
-              const hour = new Date(booking.startTime).getHours();
-              bookedSlots.push(`${hour.toString().padStart(2, '0')}:00`);
+              // Get start and end hours
+              const startHour = bookingStart.getHours();
+              const endHour = bookingEnd.getHours();
+              const endMinute = bookingEnd.getMinutes();
+              
+              // Mark all hours that overlap with this booking
+              // If booking is 8:00-10:00, disable slots 8:00 and 9:00
+              for (let hour = startHour; hour < endHour; hour++) {
+                const slotTime = `${hour.toString().padStart(2, '0')}:00`;
+                if (!bookedSlots.includes(slotTime)) {
+                  bookedSlots.push(slotTime);
+                }
+              }
+              
+              // Also check if the booking extends into the next hour
+              // If booking ends at 10:30, we should also disable 10:00 slot
+              if (endMinute > 0 && endHour < 21) {
+                const slotTime = `${endHour.toString().padStart(2, '0')}:00`;
+                if (!bookedSlots.includes(slotTime)) {
+                  bookedSlots.push(slotTime);
+                }
+              }
             }
           }
         });

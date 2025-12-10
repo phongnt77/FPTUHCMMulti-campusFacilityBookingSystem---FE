@@ -56,13 +56,19 @@ const mapFacilityResponse = (f: FacilityResponse): Facility => ({
 const mapFacilityType = (typeName: string): FacilityType => {
   const typeMap: Record<string, FacilityType> = {
     'Classroom': 'Classroom',
+    'Phòng học': 'Classroom',
     'Meeting Room': 'Meeting Room',
+    'Phòng họp': 'Meeting Room',
     'Computer Lab': 'Laboratory',
-    'Sports Court': 'Sport Facility',
-    'Auditorium': 'Auditorium',
+    'Phòng máy tính': 'Laboratory',
     'Laboratory': 'Laboratory',
+    'Sports Court': 'Sport Facility',
+    'Sân thể thao': 'Sport Facility', // Backend returns Vietnamese name
     'Sport Facility': 'Sport Facility',
+    'Auditorium': 'Auditorium',
+    'Hội trường': 'Auditorium',
     'Library': 'Library',
+    'Thư viện': 'Library',
   };
   return typeMap[typeName] || 'Classroom';
 };

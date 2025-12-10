@@ -110,7 +110,12 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
       campus: (b.campusName?.includes('NVH') || b.campusName?.includes('Nhà Văn Hóa') || b.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
       type: mapFacilityType(b.typeName || 'Classroom'),
       capacity: b.facilityCapacity || 0,
-      location: `${b.facilityRoomNumber || ''}, Tầng ${b.facilityFloorNumber || ''}`,
+      location: (() => {
+        const parts: string[] = [];
+        if (b.facilityRoomNumber) parts.push(b.facilityRoomNumber);
+        if (b.facilityFloorNumber) parts.push(`Tầng ${b.facilityFloorNumber}`);
+        return parts.length > 0 ? parts.join(', ') : 'Chưa có thông tin';
+      })(),
       amenities: [],
       imageUrl: '/images/default-facility.jpg',
       isActive: true,

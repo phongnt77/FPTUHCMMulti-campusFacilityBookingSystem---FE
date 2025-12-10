@@ -27,8 +27,8 @@ const campuses: CampusInfo[] = [
   {
     id: 'NVH',
     name: 'NVH Campus', 
-    fullName: 'FPT University - Nguyễn Văn Huyên',
-    description: 'Campus Nguyễn Văn Huyên với không gian học tập đa dạng',
+    fullName: 'FPT University NVH',
+    description: 'Campus NVH với không gian học tập đa dạng',
     gradient: 'from-violet-500 to-purple-600',
     imageUrl: '/images/nvh.jpg',
     imageAlt: 'FPTU Nguyễn Văn Huyên Campus'
@@ -460,10 +460,13 @@ const FacilityPage = () => {
                         <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="truncate">{facility.location}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                        <span>Sức chứa: <strong className="text-gray-900">{facility.capacity}</strong> người</span>
-                      </div>
+                      {/* Hide capacity for Sport Facility */}
+                      {facility.type !== 'Sport Facility' && facility.type !== 'sports-field' && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span>Sức chứa: <strong className="text-gray-900">{facility.capacity}</strong> người</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Description */}
