@@ -332,11 +332,11 @@ const FacilityPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="max-w-6xl mx-auto px-4 -mt-6">
+      <div className="max-w-6xl mx-auto px-4 mt-6">
         <div className="bg-white rounded-xl shadow-lg shadow-gray-200/50 p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="space-y-4">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
