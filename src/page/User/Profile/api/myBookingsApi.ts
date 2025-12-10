@@ -125,3 +125,55 @@ export const getMyBookings = async (params?: GetMyBookingsParams): Promise<MyBoo
   }
 };
 
+// Interface cho Cancel Booking Response
+export interface CancelBookingResponse {
+  success: boolean;
+  error: {
+    code: number;
+    message: string;
+  } | null;
+}
+
+/**
+ * Hủy booking (set status = Cancelled)
+ * @param bookingId - ID của booking cần hủy
+ * @param reason - Lý do hủy
+ * @returns Promise với response từ API
+ * @description
+ * - DELETE /api/bookings/{id}?reason={reason}
+ * - Tất cả user đã đăng nhập có thể truy cập
+ * - User chỉ được phép hủy tối đa 1 ngày trước ngày đặt lịch
+ */
+export const cancelBooking = async (
+  bookingId: string,
+  reason: string
+): Promise<CancelBookingResponse> => {
+  try {
+    const response = await myBookingsApiClient.delete<CancelBookingResponse>(
+      `/api/bookings/${bookingId}`,
+      {
+        params: {
+          reason: reason,
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const result = error.response.data as CancelBookingResponse;
+      if (result?.error) {
+        throw new Error(result.error.message || 'Lỗi khi hủy booking');
+      }
+      throw new Error(error.response.statusText || 'Lỗi khi hủy booking');
+    }
+    
+    if (error.request) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+    }
+    
+    console.error('Cancel booking API error:', error);
+    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  }
+};
+
