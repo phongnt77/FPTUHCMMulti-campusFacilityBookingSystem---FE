@@ -5,11 +5,10 @@ import { isGoogleLogin } from '../../../utils/auth';
 import { getProfile, type UserProfile } from './api/profileApi';
 import ProfileForm from './components/ProfileForm';
 import ChangePasswordForm from './components/ChangePasswordForm';
-import MyBookingsTab from './components/MyBookingsTab';
 import MyFeedbacksTab from './components/MyFeedbacksTab';
-import { Loader2, User, Lock, Calendar, MessageSquare } from 'lucide-react';
+import { Loader2, User, Lock, MessageSquare } from 'lucide-react';
 
-type TabType = 'profile' | 'password' | 'bookings' | 'feedbacks';
+type TabType = 'profile' | 'password' | 'feedbacks';
 
 const Profile = () => {
   const { user, isAuthenticated } = useAuthState();
@@ -78,7 +77,6 @@ const Profile = () => {
   const allTabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'profile', label: 'Thông tin', icon: <User className="w-4 h-4" /> },
     { id: 'password', label: 'Đổi mật khẩu', icon: <Lock className="w-4 h-4" /> },
-    { id: 'bookings', label: 'Bookings', icon: <Calendar className="w-4 h-4" /> },
     { id: 'feedbacks', label: 'Feedbacks', icon: <MessageSquare className="w-4 h-4" /> },
   ];
 
@@ -154,8 +152,6 @@ const Profile = () => {
               )}
 
               {activeTab === 'password' && <ChangePasswordForm />}
-
-              {activeTab === 'bookings' && <MyBookingsTab />}
 
               {activeTab === 'feedbacks' && <MyFeedbacksTab />}
             </div>
