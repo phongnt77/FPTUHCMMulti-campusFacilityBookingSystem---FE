@@ -34,10 +34,20 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Chỉ cho phép nhập số và các ký tự hợp lệ cho số điện thoại (+, -, (, ), khoảng trắng)
+    if (name === 'phoneNumber') {
+      const phoneValue = value.replace(/[^0-9+\-\s()]/g, '');
+      setFormData((prev) => ({
+        ...prev,
+        [name]: phoneValue,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
     setError(null);
   };
 
