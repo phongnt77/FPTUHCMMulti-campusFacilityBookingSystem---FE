@@ -3,13 +3,43 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthState } from '../../hooks/useAuthState'
 import { logoutAPI } from '../../layout/Login/api/loginAPI'
 import { clearAuth } from '../../utils/auth'
-import { LogOut, User, ChevronDown, Calendar } from 'lucide-react'
+import { LogOut, User, ChevronDown, Calendar, Bell } from 'lucide-react'
+import NotificationDropdown from '../../components/NotificationDropdown'
+import { getUnreadCount } from '../../page/User/Notification/api/notificationApi'
 
 const Header = () => {
   const { user, isAuthenticated } = useAuthState()
   const navigate = useNavigate()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
+  
+  // Check if user is Student or Lecturer
+  const isStudentOrLecturer = user && (user.role === 'Student' || user.role === 'Lecturer')
+
+  // Load unread notification count
+  const loadUnreadCount = async () => {
+    try {
+      const response = await getUnreadCount()
+      if (response.success) {
+        setUnreadCount(response.data || 0)
+      }
+    } catch (error) {
+      console.error('Error loading unread count:', error)
+    }
+  }
+
+  // Load unread count when authenticated and is Student/Lecturer
+  useEffect(() => {
+    if (isAuthenticated && isStudentOrLecturer) {
+      loadUnreadCount()
+      // Refresh unread count every 30 seconds
+      const interval = setInterval(loadUnreadCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated, isStudentOrLecturer])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -17,16 +47,19 @@ const Header = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false)
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotificationDropdown(false)
+      }
     }
 
-    if (showDropdown) {
+    if (showDropdown || showNotificationDropdown) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showDropdown])
+  }, [showDropdown, showNotificationDropdown])
 
   const handleLogout = async () => {
     try {
@@ -83,6 +116,34 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Notification Bell - Only for Student/Lecturer */}
+          {isAuthenticated && isStudentOrLecturer && (
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => {
+                  setShowNotificationDropdown(!showNotificationDropdown)
+                  setShowDropdown(false)
+                }}
+                className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Thông báo"
+              >
+                <Bell className="w-5 h-5 text-gray-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationDropdown
+                isOpen={showNotificationDropdown}
+                onClose={() => {
+                  setShowNotificationDropdown(false)
+                  loadUnreadCount() // Refresh count when closing
+                }}
+              />
+            </div>
+          )}
+
           {isAuthenticated && user ? (
             <div className="relative" ref={dropdownRef}>
               {/* User Icon/Avatar Button */}
