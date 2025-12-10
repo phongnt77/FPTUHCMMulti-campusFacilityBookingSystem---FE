@@ -15,7 +15,7 @@ const HeroSection = () => {
             FPT University HCMC · Multi‑campus
           </p>
           <h1 className="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
-            Lên kế hoạch học tập, giảng dạy với{' '}
+            Đặt phòng học, phòng lab, sân thể thao nhanh chóng với{' '}
             <span className="underline decoration-orange-200 decoration-4 underline-offset-4">
               hệ thống đặt phòng thông minh
             </span>
