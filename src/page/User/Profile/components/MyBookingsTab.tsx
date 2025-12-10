@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getMyBookings, type MyBooking, type GetMyBookingsParams } from '../api/myBookingsApi';
-import { Loader2, Calendar, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { getMyBookings, cancelBooking, type MyBooking, type GetMyBookingsParams } from '../api/myBookingsApi';
+import { Loader2, Calendar, MapPin, Clock, CheckCircle, XCircle, AlertCircle, X } from 'lucide-react';
+import CancelBookingModal from './CancelBookingModal';
+import { useToast } from '../../../../components/toast';
 
 const MyBookingsTab = () => {
+  const { showSuccess, showError } = useToast();
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -10,6 +13,9 @@ const MyBookingsTab = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [statusFilter, setStatusFilter] = useState<GetMyBookingsParams['status'] | ''>('');
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<MyBooking | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const limit = 10;
 
   const fetchBookings = async () => {
@@ -122,6 +128,74 @@ const MyBookingsTab = () => {
       month: '2-digit',
       year: 'numeric',
     });
+  };
+
+  // Kiểm tra xem booking có thể hủy được không (ít nhất 1 ngày trước ngày đặt)
+  const canCancelBooking = (booking: MyBooking): boolean => {
+    // Chỉ cho phép hủy nếu status là Draft, Pending_Approval, hoặc Approved
+    if (!['Draft', 'Pending_Approval', 'Approved'].includes(booking.status)) {
+      return false;
+    }
+
+    // Kiểm tra thời gian: phải còn ít nhất 1 ngày (24 giờ) trước ngày booking
+    const now = new Date();
+    const bookingStartTime = new Date(booking.startTime);
+    const timeDiff = bookingStartTime.getTime() - now.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60); // Chuyển đổi sang giờ
+
+    // Phải còn ít nhất 24 giờ (1 ngày) trước ngày booking
+    return hoursDiff >= 24;
+  };
+
+  // Mở modal hủy booking
+  const handleOpenCancelModal = (booking: MyBooking) => {
+    if (!canCancelBooking(booking)) {
+      const bookingDate = new Date(booking.startTime);
+      const now = new Date();
+      const hoursDiff = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursDiff < 24) {
+        showError('Bạn chỉ có thể hủy booking tối đa 1 ngày trước ngày đặt lịch');
+      } else {
+        showError('Booking này không thể hủy');
+      }
+      return;
+    }
+    setSelectedBooking(booking);
+    setCancelModalOpen(true);
+  };
+
+  // Đóng modal hủy booking
+  const handleCloseCancelModal = () => {
+    if (!isCancelling) {
+      setCancelModalOpen(false);
+      setSelectedBooking(null);
+    }
+  };
+
+  // Xác nhận hủy booking
+  const handleConfirmCancel = async (reason: string) => {
+    if (!selectedBooking) return;
+
+    setIsCancelling(true);
+    try {
+      const response = await cancelBooking(selectedBooking.bookingId, reason);
+      
+      if (response.success) {
+        showSuccess('Đã hủy booking thành công');
+        setCancelModalOpen(false);
+        setSelectedBooking(null);
+        // Reload danh sách bookings
+        await fetchBookings();
+      } else {
+        showError(response.error?.message || 'Không thể hủy booking');
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi không xác định';
+      showError(errorMessage);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   return (
@@ -240,11 +314,36 @@ const MyBookingsTab = () => {
                     <div className="text-xs text-gray-500 pt-2 border-t border-gray-100">
                       Tạo lúc: {formatDateTime(booking.createdAt)}
                     </div>
+
+                    {/* Action Buttons */}
+                    {canCancelBooking(booking) && (
+                      <div className="pt-2">
+                        <button
+                          onClick={() => handleOpenCancelModal(booking)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                          Hủy booking
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Cancel Booking Modal */}
+          {selectedBooking && (
+            <CancelBookingModal
+              isOpen={cancelModalOpen}
+              onClose={handleCloseCancelModal}
+              onConfirm={handleConfirmCancel}
+              facilityName={selectedBooking.facilityName}
+              bookingDate={formatDateTime(selectedBooking.startTime)}
+              isLoading={isCancelling}
+            />
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (

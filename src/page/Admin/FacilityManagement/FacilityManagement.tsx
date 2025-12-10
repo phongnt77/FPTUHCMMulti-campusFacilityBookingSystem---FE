@@ -480,7 +480,11 @@ const FacilityManagement = () => {
                                 : facility.roomNumber || facility.floorNumber || '-'}
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                              {facility.capacity}
+                              {facility.capacity === -1 ? (
+                                <span className="text-gray-600 italic">Nhiều người</span>
+                              ) : (
+                                facility.capacity
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-6 py-4">
                               <span

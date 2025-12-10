@@ -18,6 +18,11 @@ const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFo
   const [campuses, setCampuses] = useState<Campus[]>([])
   const [facilityTypes, setFacilityTypes] = useState<FacilityType[]>([])
   const [loadingOptions, setLoadingOptions] = useState(true)
+  const [selectedTypeId, setSelectedTypeId] = useState<string>(facility?.typeId || '')
+  const [capacity, setCapacity] = useState<number | string>(facility?.capacity || '')
+  
+  // Giá trị đặc biệt cho sức chứa không xác định (sân thể thao)
+  const UNLIMITED_CAPACITY = -1
 
   // Load campuses và facility types
   useEffect(() => {
@@ -48,6 +53,43 @@ const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFo
     loadOptions()
   }, [])
 
+  // Kiểm tra xem loại facility có phải là sân thể thao không
+  const isSportsFieldType = (typeId: string): boolean => {
+    if (!typeId) return false
+    const selectedType = facilityTypes.find((type) => type.typeId === typeId)
+    if (!selectedType) return false
+    
+    // Kiểm tra tên loại có chứa từ khóa liên quan đến sân thể thao
+    const typeName = selectedType.name.toLowerCase()
+    return (
+      typeName.includes('sân thể thao') ||
+      typeName.includes('sân thể thao') ||
+      typeName.includes('sports field') ||
+      typeName.includes('sport field') ||
+      typeName.includes('sân bóng') ||
+      typeName.includes('sân tennis') ||
+      typeName.includes('sân cầu lông') ||
+      typeName.includes('sân bóng rổ') ||
+      typeName.includes('sân bóng chuyền')
+    )
+  }
+
+  // Xử lý khi thay đổi loại facility
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTypeId = e.target.value
+    setSelectedTypeId(newTypeId)
+    
+    // Nếu là sân thể thao, tự động set capacity = -1 (không xác định)
+    if (isSportsFieldType(newTypeId)) {
+      setCapacity(UNLIMITED_CAPACITY)
+    } else {
+      // Nếu không phải sân thể thao và đang là -1, reset về rỗng hoặc giá trị mặc định
+      if (capacity === UNLIMITED_CAPACITY) {
+        setCapacity('')
+      }
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -77,7 +119,10 @@ const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFo
       return
     }
 
-    if (facilityData.capacity <= 0) {
+    // Validation capacity: cho phép -1 (không xác định) cho sân thể thao, hoặc > 0 cho loại khác
+    if (facilityData.capacity === UNLIMITED_CAPACITY) {
+      // Đã được set tự động cho sân thể thao, không cần validate
+    } else if (facilityData.capacity <= 0) {
       alert('Sức chứa phải lớn hơn 0')
       return
     }
@@ -136,7 +181,8 @@ const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFo
                   </label>
                   <select
                     name="typeId"
-                    defaultValue={facility?.typeId || ''}
+                    value={selectedTypeId}
+                    onChange={handleTypeChange}
                     required
                     disabled={loading || loadingOptions}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -178,15 +224,32 @@ const FacilityForm = ({ facility, onClose, onSave, loading = false }: FacilityFo
                     <Users className="mr-1 inline h-4 w-4" />
                     Sức chứa <span className="text-red-500">*</span>
                   </label>
+                  {isSportsFieldType(selectedTypeId) ? (
+                    <div className="w-full rounded-lg border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-600">
+                      Nhiều người (Không xác định)
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      name="capacity"
+                      value={capacity === UNLIMITED_CAPACITY ? '' : capacity}
+                      onChange={(e) => setCapacity(e.target.value ? Number(e.target.value) : '')}
+                      min="1"
+                      required
+                      disabled={loading}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  )}
                   <input
-                    type="number"
+                    type="hidden"
                     name="capacity"
-                    defaultValue={facility?.capacity || ''}
-                    min="1"
-                    required
-                    disabled={loading}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    value={isSportsFieldType(selectedTypeId) ? UNLIMITED_CAPACITY : capacity}
                   />
+                  {isSportsFieldType(selectedTypeId) && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Sân thể thao có sức chứa không xác định (nhiều người)
+                    </p>
+                  )}
                 </div>
               </div>
 
