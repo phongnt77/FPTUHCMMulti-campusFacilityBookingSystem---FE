@@ -35,13 +35,16 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/bookings/${id}`,
     SUBMIT: (id: string) => `/bookings/${id}/submit`,
     CANCEL: (id: string) => `/bookings/${id}`,
+    CHECK_IN: (id: string) => `/bookings/${id}/check-in`,
+    CHECK_OUT: (id: string) => `/bookings/${id}/check-out`,
   },
   
   // Feedback
   FEEDBACK: {
-    GET_ALL: '/booking-feedbacks',
-    GET_BY_ID: (id: string) => `/booking-feedbacks/${id}`,
-    CREATE: '/booking-feedbacks',
+    GET_ALL: '/feedbacks',
+    GET_BY_ID: (id: string) => `/feedbacks/${id}`,
+    CREATE: '/feedbacks',
+    GET_FACILITY_RATING: (facilityId: string) => `/feedbacks/facility/${facilityId}/rating`,
   },
   
   // User

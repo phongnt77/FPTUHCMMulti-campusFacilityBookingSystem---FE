@@ -19,12 +19,16 @@ export interface UserBooking {
   date: string;
   startTime: string;
   endTime: string;
+  startDateTime?: string; // Full ISO datetime from backend
+  endDateTime?: string; // Full ISO datetime from backend
   purpose: string;
   numberOfPeople: number;
   status: BookingStatus;
   createdAt: string;
   feedback?: Feedback;
   rejectionReason?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 // Backend response types
@@ -48,6 +52,8 @@ interface BackendBookingResponse {
   specialRequirements?: string;
   createdAt: string;
   rejectionReason?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 interface BackendFeedbackResponse {
@@ -124,11 +130,15 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
     date: b.startTime.split('T')[0],
     startTime: startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
     endTime: endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    startDateTime: b.startTime, // Keep full ISO datetime for time comparison
+    endDateTime: b.endTime, // Keep full ISO datetime for time comparison
     purpose: b.purpose,
     numberOfPeople: b.estimatedAttendees,
     status: mapStatus(b.status),
     createdAt: b.createdAt,
     rejectionReason: b.rejectionReason,
+    checkInTime: b.checkInTime,
+    checkOutTime: b.checkOutTime,
     feedback: feedback ? {
       id: feedback.feedbackId,
       rating: feedback.rating,
@@ -345,6 +355,60 @@ export const myBookingsApi = {
         rejected: 0,
         cancelled: 0,
         feedbackGiven: 0,
+      };
+    }
+  },
+
+  // Check-in booking - API ONLY
+  checkIn: async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(id)}`;
+      console.log('Checking in booking:', id);
+      
+      const response = await apiFetch<BackendBookingResponse>(url, {
+        method: 'POST',
+      });
+      
+      if (response.success) {
+        return { success: true, message: 'Check-in thành công!' };
+      }
+      
+      return { 
+        success: false, 
+        message: response.error?.message || 'Không thể check-in. Vui lòng thử lại.' 
+      };
+    } catch (error) {
+      console.error('Error checking in:', error);
+      return { 
+        success: false, 
+        message: 'Không thể kết nối đến server.' 
+      };
+    }
+  },
+
+  // Check-out booking - API ONLY
+  checkOut: async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(id)}`;
+      console.log('Checking out booking:', id);
+      
+      const response = await apiFetch<BackendBookingResponse>(url, {
+        method: 'POST',
+      });
+      
+      if (response.success) {
+        return { success: true, message: 'Check-out thành công!' };
+      }
+      
+      return { 
+        success: false, 
+        message: response.error?.message || 'Không thể check-out. Vui lòng thử lại.' 
+      };
+    } catch (error) {
+      console.error('Error checking out:', error);
+      return { 
+        success: false, 
+        message: 'Không thể kết nối đến server.' 
       };
     }
   }

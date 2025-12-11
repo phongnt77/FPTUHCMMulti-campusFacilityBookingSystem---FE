@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2, Search, Filter, X, Tag } from 'lucide-react'
-import type { Facility, FacilityRequest, GetFacilitiesParams } from './api/facilityApi'
-import { getFacilities, createFacility, updateFacility, deleteFacility } from './api/facilityApi'
+import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2, Search, Filter, X, Tag, Star, MessageSquare, Eye } from 'lucide-react'
+import type { Facility, FacilityRequest, GetFacilitiesParams, FacilityFeedback } from './api/facilityApi'
+import { getFacilities, createFacility, updateFacility, deleteFacility, getFacilityFeedbacks, getFacilityRating } from './api/facilityApi'
 import type { FacilityType, FacilityTypeRequest } from './api/facilityTypeApi'
 import { getFacilityTypes, createFacilityType, updateFacilityType } from './api/facilityTypeApi'
 import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
@@ -44,6 +44,13 @@ const FacilityManagement = () => {
   const [facilityFormLoading, setFacilityFormLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+
+  // Feedback states
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null)
+  const [feedbacks, setFeedbacks] = useState<FacilityFeedback[]>([])
+  const [feedbacksLoading, setFeedbacksLoading] = useState(false)
+  const [facilityRatings, setFacilityRatings] = useState<Record<string, number>>({})
 
   // ========== FACILITY TYPES STATE ==========
   const [facilityTypesList, setFacilityTypesList] = useState<FacilityType[]>([])
@@ -115,6 +122,20 @@ const FacilityManagement = () => {
         } else {
           setTotalItems(response.data.length)
         }
+        
+        // Load ratings for all facilities
+        const ratings: Record<string, number> = {}
+        for (const facility of response.data) {
+          try {
+            const ratingResponse = await getFacilityRating(facility.facilityId)
+            if (ratingResponse.success && ratingResponse.data !== undefined) {
+              ratings[facility.facilityId] = ratingResponse.data
+            }
+          } catch (error) {
+            // Ignore errors for individual ratings
+          }
+        }
+        setFacilityRatings(ratings)
       } else {
         setFacilitiesError('Không thể tải danh sách facilities')
         setFacilities([])
@@ -127,6 +148,29 @@ const FacilityManagement = () => {
       setFacilitiesLoading(false)
     }
   }, [currentPage, itemsPerPage, nameFilter, statusFilter, typeIdFilter, campusIdFilter])
+
+  // Load feedbacks for a facility
+  const handleViewFeedbacks = async (facility: Facility) => {
+    setSelectedFacility(facility)
+    setShowFeedbackModal(true)
+    setFeedbacksLoading(true)
+    setFeedbacks([])
+
+    try {
+      const response = await getFacilityFeedbacks(facility.facilityId)
+      if (response.success && response.data) {
+        setFeedbacks(response.data)
+      } else {
+        showError(response.error?.message || 'Không thể tải danh sách feedbacks')
+        setFeedbacks([])
+      }
+    } catch (error) {
+      showError('Đã xảy ra lỗi khi tải danh sách feedbacks')
+      setFeedbacks([])
+    } finally {
+      setFeedbacksLoading(false)
+    }
+  }
 
   // Fetch facility types
   const fetchFacilityTypes = useCallback(async () => {
@@ -451,6 +495,9 @@ const FacilityManagement = () => {
                           <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                             Trạng thái
                           </th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
+                            Đánh giá
+                          </th>
                           <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700">
                             Thao tác
                           </th>
@@ -494,6 +541,30 @@ const FacilityManagement = () => {
                               >
                                 {facility.status === 'Available' ? 'Available' : 'Under Maintenance'}
                               </span>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                {facilityRatings[facility.facilityId] !== undefined ? (
+                                  <>
+                                    <div className="flex items-center gap-1">
+                                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                                      <span className="font-semibold text-gray-900">
+                                        {facilityRatings[facility.facilityId].toFixed(1)}
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleViewFeedbacks(facility)}
+                                      className="flex items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 transition-colors"
+                                      title="Xem feedbacks"
+                                    >
+                                      <Eye className="h-3 w-3" />
+                                      Xem
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">Chưa có đánh giá</span>
+                                )}
+                              </div>
                             </td>
                             <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                               <div className="flex items-center justify-end gap-2">
@@ -751,6 +822,121 @@ const FacilityManagement = () => {
             onSave={handleSaveFacilityType}
             loading={facilityTypeFormLoading}
           />
+        )}
+
+        {/* Feedback Modal */}
+        {showFeedbackModal && selectedFacility && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-orange-500 to-purple-600 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <Building2 className="h-6 w-6 text-white" />
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Feedbacks - {selectedFacility.name}</h3>
+                    <p className="text-sm text-white/80">ID: {selectedFacility.facilityId}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFeedbackModal(false)
+                    setSelectedFacility(null)
+                    setFeedbacks([])
+                  }}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="overflow-y-auto max-h-[calc(90vh-120px)] p-6">
+                {feedbacksLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                    <p className="mt-4 text-sm text-gray-600">Đang tải feedbacks...</p>
+                  </div>
+                ) : feedbacks.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Chưa có feedback nào</h3>
+                    <p className="text-sm text-gray-600">Facility này chưa nhận được đánh giá từ người dùng.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {feedbacks.map((feedback) => (
+                      <div
+                        key={feedback.feedbackId}
+                        className="rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-gray-900">{feedback.userName || 'Người dùng'}</span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-4 w-4 ${
+                                      star <= feedback.rating
+                                        ? 'fill-yellow-400 text-yellow-400'
+                                        : 'text-gray-300'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {new Date(feedback.createdAt).toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                          {feedback.reportIssue && (
+                            <span
+                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                feedback.isResolved
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              {feedback.isResolved ? 'Đã xử lý' : 'Có vấn đề'}
+                            </span>
+                          )}
+                        </div>
+                        {feedback.comments && (
+                          <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 mt-2">
+                            {feedback.comments}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  Tổng cộng: <span className="font-semibold">{feedbacks.length}</span> feedbacks
+                </div>
+                <button
+                  onClick={() => {
+                    setShowFeedbackModal(false)
+                    setSelectedFacility(null)
+                    setFeedbacks([])
+                  }}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

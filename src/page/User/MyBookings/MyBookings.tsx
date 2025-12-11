@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, MapPin, Users, Star, MessageSquare,
   CheckCircle2, XCircle, Clock3, AlertCircle, ChevronRight,
-  Building2, FlaskConical, Trophy, Loader2, X, Send
+  Building2, FlaskConical, Trophy, Loader2, X, Send,
+  LogIn, LogOut
 } from 'lucide-react';
 import type { FacilityType } from '../../../types';
 import { myBookingsApi, type UserBooking, type BookingStatus } from './api/api';
@@ -25,6 +26,9 @@ const MyBookingsPage = () => {
   const [comment, setComment] = useState('');
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
+  // Check-in/Check-out loading state
+  const [processingBookingId, setProcessingBookingId] = useState<string | null>(null);
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -140,9 +144,9 @@ const MyBookingsPage = () => {
 
       if (result.success) {
         setFeedbackSuccess(true);
-        // Reload bookings to get updated feedback
+        // Reload page to get updated feedback
         setTimeout(() => {
-          loadBookings();
+          window.location.reload();
         }, 1500);
       } else {
         alert(result.message);
@@ -168,6 +172,117 @@ const MyBookingsPage = () => {
     } catch (error) {
       console.error('Error cancelling booking:', error);
     }
+  };
+
+  const handleCheckIn = async (booking: UserBooking) => {
+    if (!window.confirm('Bạn có chắc chắn muốn check-in cho đặt phòng này?')) return;
+
+    setProcessingBookingId(booking.id);
+    try {
+      const result = await myBookingsApi.checkIn(booking.id);
+      if (result.success) {
+        await loadBookings();
+        alert(result.message);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error('Error checking in:', error);
+      alert('Có lỗi xảy ra khi check-in');
+    } finally {
+      setProcessingBookingId(null);
+    }
+  };
+
+  const handleCheckOut = async (booking: UserBooking) => {
+    if (!window.confirm('Bạn có chắc chắn muốn check-out cho đặt phòng này?')) return;
+
+    setProcessingBookingId(booking.id);
+    try {
+      const result = await myBookingsApi.checkOut(booking.id);
+      if (result.success) {
+        alert(result.message);
+        // Reload page after successful check-out
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      } else {
+        alert(result.message);
+        setProcessingBookingId(null);
+      }
+    } catch (error) {
+      console.error('Error checking out:', error);
+      alert('Có lỗi xảy ra khi check-out');
+      setProcessingBookingId(null);
+    }
+  };
+
+  // Helper function to check if check-in is available
+  // Note: We show the button if booking is Approved and not checked in yet
+  // Backend will validate the actual time window (15 min before start to end time)
+  const canCheckIn = (booking: UserBooking): boolean => {
+    // Basic checks
+    if (booking.status !== 'Approved') return false;
+    if (booking.checkInTime) return false; // Already checked in
+    
+    // Show check-in button - backend will handle time validation
+    // This allows users to see the button and attempt check-in
+    // Backend will return appropriate error if outside time window
+    return true;
+    
+    // Optional: Add client-side time check for better UX (uncomment if needed)
+    /*
+    try {
+      const now = new Date();
+      
+      // Use full datetime from backend if available, otherwise construct from date and time
+      let startTime: Date;
+      let endTime: Date;
+      
+      if (booking.startDateTime && booking.endDateTime) {
+        // Use full ISO datetime from backend (more accurate)
+        startTime = new Date(booking.startDateTime);
+        endTime = new Date(booking.endDateTime);
+      } else {
+        // Fallback: construct from date and time strings
+        const bookingDate = new Date(booking.date);
+        const [startHour, startMinute] = booking.startTime.split(':').map(Number);
+        const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+        
+        startTime = new Date(bookingDate);
+        startTime.setHours(startHour, startMinute, 0, 0);
+        
+        endTime = new Date(bookingDate);
+        endTime.setHours(endHour, endMinute, 0, 0);
+      }
+      
+      // Validate dates
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        console.warn('Invalid date/time for booking:', booking.id);
+        return false;
+      }
+      
+      // Can check-in from 15 minutes before start time to end time
+      const allowedCheckInStart = new Date(startTime);
+      allowedCheckInStart.setMinutes(allowedCheckInStart.getMinutes() - 15);
+      
+      const canCheckInNow = now >= allowedCheckInStart && now <= endTime;
+      
+      return canCheckInNow;
+    } catch (error) {
+      console.error('Error checking check-in availability:', error);
+      return false;
+    }
+    */
+  };
+
+  // Helper function to check if check-out is available
+  const canCheckOut = (booking: UserBooking): boolean => {
+    if (booking.status !== 'Approved' && booking.status !== 'Finish') return false;
+    if (!booking.checkInTime) return false; // Not checked in yet
+    if (booking.checkOutTime) return false; // Already checked out
+    
+    return true;
   };
 
   const renderStars = (count: number, interactive = false, onSelect?: (n: number) => void) => {
@@ -280,8 +395,12 @@ const MyBookingsPage = () => {
             {bookings.map((booking) => {
               const statusConfig = getStatusConfig(booking.status);
               const facilityColors = getFacilityTypeColor(booking.facility.type);
-              const canFeedback = booking.status === 'Finish' && !booking.feedback;
+              // Allow feedback for Finish bookings OR bookings that have been checked out
+              const canFeedback = (booking.status === 'Finish' || booking.checkOutTime) && !booking.feedback;
               const canCancel = booking.status === 'Pending' || booking.status === 'Approved';
+              const showCheckIn = canCheckIn(booking);
+              const showCheckOut = canCheckOut(booking);
+              const isProcessing = processingBookingId === booking.id;
 
               return (
                 <div
@@ -352,10 +471,100 @@ const MyBookingsPage = () => {
                             )}
                           </div>
                         )}
+
+                        {/* Check-in/Check-out Status */}
+                        {(booking.checkInTime || booking.checkOutTime) && (
+                          <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                            {booking.checkInTime && (
+                              <div className="flex items-center gap-1.5 text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg">
+                                <LogIn className="w-4 h-4" />
+                                <span className="font-medium">Check-in:</span>
+                                <span>
+                                  {(() => {
+                                    try {
+                                      const date = new Date(booking.checkInTime);
+                                      if (isNaN(date.getTime())) return booking.checkInTime;
+                                      return date.toLocaleString('vi-VN', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      });
+                                    } catch {
+                                      return booking.checkInTime;
+                                    }
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                            {booking.checkOutTime && (
+                              <div className="flex items-center gap-1.5 text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg">
+                                <LogOut className="w-4 h-4" />
+                                <span className="font-medium">Check-out:</span>
+                                <span>
+                                  {(() => {
+                                    try {
+                                      const date = new Date(booking.checkOutTime);
+                                      if (isNaN(date.getTime())) return booking.checkOutTime;
+                                      return date.toLocaleString('vi-VN', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      });
+                                    } catch {
+                                      return booking.checkOutTime;
+                                    }
+                                  })()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Actions */}
                       <div className="flex lg:flex-col gap-2 lg:items-end">
+                        {showCheckIn && (
+                          <button
+                            onClick={() => handleCheckIn(booking)}
+                            disabled={isProcessing}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Đang xử lý...
+                              </>
+                            ) : (
+                              <>
+                                <LogIn className="w-4 h-4" />
+                                Check-in
+                              </>
+                            )}
+                          </button>
+                        )}
+                        {showCheckOut && (
+                          <button
+                            onClick={() => handleCheckOut(booking)}
+                            disabled={isProcessing}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Đang xử lý...
+                              </>
+                            ) : (
+                              <>
+                                <LogOut className="w-4 h-4" />
+                                Check-out
+                              </>
+                            )}
+                          </button>
+                        )}
                         {canFeedback && (
                           <button
                             onClick={() => openFeedbackModal(booking)}

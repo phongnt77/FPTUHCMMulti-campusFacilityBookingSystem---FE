@@ -273,3 +273,100 @@ export const deleteFacility = async (facilityId: string): Promise<DeleteFacility
   }
 };
 
+// Interface cho Feedback
+export interface FacilityFeedback {
+  feedbackId: string;
+  bookingId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  comments: string;
+  reportIssue: boolean;
+  isResolved: boolean;
+  createdAt: string;
+}
+
+export interface FacilityFeedbackResponse {
+  success: boolean;
+  data?: FacilityFeedback[];
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
+/**
+ * Lấy danh sách feedbacks của một facility
+ * @param facilityId - ID của facility
+ * @returns Promise với danh sách feedbacks
+ */
+export const getFacilityFeedbacks = async (facilityId: string): Promise<FacilityFeedbackResponse> => {
+  try {
+    // Get all bookings for this facility first
+    const bookingsResponse = await facilityApiClient.get('/api/bookings', {
+      params: {
+        facilityId,
+        limit: 1000, // Get all bookings
+      },
+    });
+
+    const bookings = bookingsResponse.data?.data || [];
+    const bookingIds = bookings.map((b: any) => b.bookingId);
+
+    if (bookingIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    // Get all feedbacks for these bookings
+    const feedbacks: FacilityFeedback[] = [];
+    for (const bookingId of bookingIds) {
+      try {
+        const feedbackResponse = await facilityApiClient.get(`/api/feedbacks/booking/${bookingId}`);
+        if (feedbackResponse.data?.success && feedbackResponse.data?.data) {
+          const feedbackData = Array.isArray(feedbackResponse.data.data)
+            ? feedbackResponse.data.data
+            : [feedbackResponse.data.data];
+          feedbacks.push(...feedbackData);
+        }
+      } catch (error) {
+        // Skip if no feedback for this booking
+        continue;
+      }
+    }
+
+    return { success: true, data: feedbacks };
+  } catch (error: any) {
+    console.error('Get facility feedbacks error:', error);
+    return {
+      success: false,
+      error: {
+        code: error.response?.status || 500,
+        message: error.response?.data?.error?.message || 'Lỗi khi lấy danh sách feedbacks',
+      },
+    };
+  }
+};
+
+/**
+ * Lấy rating trung bình của facility
+ * @param facilityId - ID của facility
+ * @returns Promise với rating trung bình
+ */
+export const getFacilityRating = async (facilityId: string): Promise<{ success: boolean; data?: number; error?: { code: number; message: string } }> => {
+  try {
+    const response = await facilityApiClient.get(`/api/feedbacks/facility/${facilityId}/rating`);
+    return {
+      success: true,
+      data: response.data?.data || 0,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: {
+        code: error.response?.status || 500,
+        message: error.response?.data?.error?.message || 'Lỗi khi lấy rating',
+      },
+    };
+  }
+};
+
