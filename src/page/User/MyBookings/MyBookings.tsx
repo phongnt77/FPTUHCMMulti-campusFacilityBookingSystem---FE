@@ -218,71 +218,96 @@ const MyBookingsPage = () => {
   };
 
   // Helper function to check if check-in is available
-  // Note: We show the button if booking is Approved and not checked in yet
-  // Backend will validate the actual time window (15 min before start to end time)
+  // Check-in: từ 15 phút trước StartTime đến StartTime
+  // Ví dụ: đặt 9-10h thì check-in từ 8h45-9h
   const canCheckIn = (booking: UserBooking): boolean => {
     // Basic checks
     if (booking.status !== 'Approved') return false;
     if (booking.checkInTime) return false; // Already checked in
     
-    // Show check-in button - backend will handle time validation
-    // This allows users to see the button and attempt check-in
-    // Backend will return appropriate error if outside time window
-    return true;
-    
-    // Optional: Add client-side time check for better UX (uncomment if needed)
-    /*
     try {
       const now = new Date();
       
       // Use full datetime from backend if available, otherwise construct from date and time
       let startTime: Date;
-      let endTime: Date;
       
-      if (booking.startDateTime && booking.endDateTime) {
+      if (booking.startDateTime) {
         // Use full ISO datetime from backend (more accurate)
         startTime = new Date(booking.startDateTime);
-        endTime = new Date(booking.endDateTime);
       } else {
         // Fallback: construct from date and time strings
         const bookingDate = new Date(booking.date);
         const [startHour, startMinute] = booking.startTime.split(':').map(Number);
-        const [endHour, endMinute] = booking.endTime.split(':').map(Number);
         
         startTime = new Date(bookingDate);
         startTime.setHours(startHour, startMinute, 0, 0);
-        
-        endTime = new Date(bookingDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
       }
       
-      // Validate dates
-      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      // Validate date
+      if (isNaN(startTime.getTime())) {
         console.warn('Invalid date/time for booking:', booking.id);
         return false;
       }
       
-      // Can check-in from 15 minutes before start time to end time
+      // Can check-in from 15 minutes before start time to start time
       const allowedCheckInStart = new Date(startTime);
       allowedCheckInStart.setMinutes(allowedCheckInStart.getMinutes() - 15);
       
-      const canCheckInNow = now >= allowedCheckInStart && now <= endTime;
+      const canCheckInNow = now >= allowedCheckInStart && now <= startTime;
       
       return canCheckInNow;
     } catch (error) {
       console.error('Error checking check-in availability:', error);
-      return false;
+      // If error, show button anyway - backend will validate
+      return true;
     }
-    */
   };
 
   // Helper function to check if check-out is available
+  // Check-out: từ EndTime đến 15 phút sau EndTime
+  // Ví dụ: đặt 9-10h thì check-out từ 10h-10h15
   const canCheckOut = (booking: UserBooking): boolean => {
     if (booking.status !== 'Approved' && booking.status !== 'Finish') return false;
     if (!booking.checkInTime) return false; // Not checked in yet
     if (booking.checkOutTime) return false; // Already checked out
     
-    return true;
+    try {
+      const now = new Date();
+      
+      // Use full datetime from backend if available, otherwise construct from date and time
+      let endTime: Date;
+      
+      if (booking.endDateTime) {
+        // Use full ISO datetime from backend (more accurate)
+        endTime = new Date(booking.endDateTime);
+      } else {
+        // Fallback: construct from date and time strings
+        const bookingDate = new Date(booking.date);
+        const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+        
+        endTime = new Date(bookingDate);
+        endTime.setHours(endHour, endMinute, 0, 0);
+      }
+      
+      // Validate date
+      if (isNaN(endTime.getTime())) {
+        console.warn('Invalid date/time for booking:', booking.id);
+        return false;
+      }
+      
+      // Can check-out from end time to 15 minutes after end time
+      const allowedCheckOutStart = new Date(endTime);
+      const allowedCheckOutEnd = new Date(endTime);
+      allowedCheckOutEnd.setMinutes(allowedCheckOutEnd.getMinutes() + 15);
+      
+      const canCheckOutNow = now >= allowedCheckOutStart && now <= allowedCheckOutEnd;
+      
+      return canCheckOutNow;
+    } catch (error) {
+      console.error('Error checking check-out availability:', error);
+      // If error, show button anyway - backend will validate
+      return true;
+    }
   };
 
   const renderStars = (count: number, interactive = false, onSelect?: (n: number) => void) => {

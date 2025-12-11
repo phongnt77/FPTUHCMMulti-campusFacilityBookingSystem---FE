@@ -107,10 +107,16 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
   
   // Operating hours: 7:00 - 21:00
   for (let hour = 7; hour < 21; hour++) {
+    // Calculate the slot start time
+    const slotStartTime = new Date(baseDate);
+    slotStartTime.setHours(hour, 0, 0, 0);
+    
+    // Calculate time difference in hours between slot start time and current time
+    const hoursUntilSlot = (slotStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    
     // Past time slots are always unavailable
     // - If the date is in the past, all slots are unavailable
     // - If it's today, only slots before the current hour are unavailable
-    //   Example: If current time is 9:09, disable slots 7:00, 8:00, but keep 9:00 available
     let isPastSlot = false;
     if (isPastDate) {
       isPastSlot = true; // Entire day is in the past
@@ -119,9 +125,12 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
       if (hour < currentHour) {
         isPastSlot = true; // Slot hour is before current hour
       }
-      // Note: If current time is 9:09, slot 9:00 is still available
-      // If current time is 9:30, slot 9:00 is still available (user can book for remaining time)
     }
+    
+    // Check if slot is within 3 hours (must book at least 3 hours in advance)
+    // Example: If current time is 8:00, slot 10:00 is disabled (10:00 - 8:00 = 2 hours < 3 hours)
+    // Example: If current time is 6:00, slot 10:00 is available (10:00 - 6:00 = 4 hours >= 3 hours)
+    const isWithin3Hours = hoursUntilSlot < 3 && hoursUntilSlot >= 0;
     
     const isBooked = bookedSlots.includes(`${hour.toString().padStart(2, '0')}:00`);
     
@@ -129,7 +138,7 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
       id: `slot-${hour}`,
       startTime: `${hour.toString().padStart(2, '0')}:00`,
       endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
-      isAvailable: !isPastSlot && !isBooked,
+      isAvailable: !isPastSlot && !isWithin3Hours && !isBooked,
     });
   }
   
