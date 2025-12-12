@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Building2, Users, LogOut, MapPin } from 'lucide-react'
+import { LayoutDashboard, Building2, Users, LogOut, MapPin, BarChart3 } from 'lucide-react'
 import { logoutAPI } from '../layout/Login/api/loginAPI'
 import { clearAuth } from '../utils/auth'
 
@@ -46,7 +46,7 @@ const AdminSideBar = () => {
             }
           >
             <LayoutDashboard className="h-5 w-5" />
-            <span>BookingDashboard</span>
+            <span>Booking Approval</span>
           </NavLink>
 
           <NavLink
@@ -89,6 +89,20 @@ const AdminSideBar = () => {
           >
             <Users className="h-5 w-5" />
             <span>Users</span>
+          </NavLink>
+
+          <NavLink
+            to="/admin/reports"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-orange-50 text-orange-600'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-orange-600'
+              }`
+            }
+          >
+            <BarChart3 className="h-5 w-5" />
+            <span>Dashboard</span>
           </NavLink>
         </nav>
 
