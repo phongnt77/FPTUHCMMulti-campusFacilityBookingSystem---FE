@@ -460,13 +460,18 @@ const FacilityPage = () => {
                         <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                         <span className="truncate">{facility.location}</span>
                       </div>
-                      {/* Hide capacity for Sport Facility */}
-                      {facility.type !== 'Sport Facility' && facility.type !== 'sports-field' && (
+                      {/* Display capacity - show "Nhiều người" for sports fields with capacity -1 */}
+                      {(facility.type === 'Sport Facility' || facility.type === 'sports-field') && facility.capacity === -1 ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <span>Sức chứa: <strong className="text-gray-900">Nhiều người</strong></span>
+                        </div>
+                      ) : facility.type !== 'Sport Facility' && facility.type !== 'sports-field' ? (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           <span>Sức chứa: <strong className="text-gray-900">{facility.capacity}</strong> người</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Description */}
