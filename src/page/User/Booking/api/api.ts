@@ -116,21 +116,24 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
     
     // Past time slots are always unavailable
     // - If the date is in the past, all slots are unavailable
-    // - If it's today, only slots before the current hour are unavailable
+    // - If it's today, only slots that have already passed are unavailable
     let isPastSlot = false;
     if (isPastDate) {
       isPastSlot = true; // Entire day is in the past
     } else if (isToday) {
-      // Same day - disable only slots that are strictly before the current hour
-      if (hour < currentHour) {
-        isPastSlot = true; // Slot hour is before current hour
+      // Same day - disable only slots that have already passed (slot start time < current time)
+      // If current time is 7:36, slot 7:00 is in the past (7:00 < 7:36)
+      // If current time is 7:36, slot 8:00 is in the future (8:00 > 7:36)
+      if (slotStartTime.getTime() < now.getTime()) {
+        isPastSlot = true; // Slot has already passed
       }
     }
     
     // Check if slot is within 3 hours (must book at least 3 hours in advance)
-    // Example: If current time is 8:00, slot 10:00 is disabled (10:00 - 8:00 = 2 hours < 3 hours)
-    // Example: If current time is 6:00, slot 10:00 is available (10:00 - 6:00 = 4 hours >= 3 hours)
-    const isWithin3Hours = hoursUntilSlot < 3 && hoursUntilSlot >= 0;
+    // Example: If current time is 7:36, slot 10:00 is disabled (10:00 - 7:36 = 2.4 hours < 3 hours)
+    // Example: If current time is 7:36, slot 11:00 is available (11:00 - 7:36 = 3.4 hours >= 3 hours)
+    // Only check for future slots (hoursUntilSlot > 0)
+    const isWithin3Hours = hoursUntilSlot > 0 && hoursUntilSlot < 3;
     
     const isBooked = bookedSlots.includes(`${hour.toString().padStart(2, '0')}:00`);
     

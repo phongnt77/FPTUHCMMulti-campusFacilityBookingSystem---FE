@@ -8,10 +8,13 @@ import {
 } from 'lucide-react';
 import type { FacilityType } from '../../../types';
 import { myBookingsApi, type UserBooking, type BookingStatus } from './api/api';
+import { useToast } from '../../../components/toast';
+import { ConfirmModal } from '../../../components/ConfirmModal';
 
 type FilterStatus = BookingStatus | 'all';
 
 const MyBookingsPage = () => {
+  const { showSuccess, showError } = useToast();
   const [bookings, setBookings] = useState<UserBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -29,6 +32,22 @@ const MyBookingsPage = () => {
 
   // Check-in/Check-out loading state
   const [processingBookingId, setProcessingBookingId] = useState<string | null>(null);
+
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmColor?: 'red' | 'blue' | 'green' | 'purple';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -51,7 +70,7 @@ const MyBookingsPage = () => {
   }, [loadBookings]);
 
   const getStatusConfig = (status: BookingStatus) => {
-    const configs: Record<string, { label: string; color: string; icon: JSX.Element }> = {
+    const configs: Record<string, { label: string; color: string; icon: React.ReactElement }> = {
       'Pending': {
         label: 'Chờ duyệt',
         color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -149,72 +168,101 @@ const MyBookingsPage = () => {
           window.location.reload();
         }, 1500);
       } else {
-        alert(result.message);
+        showError(result.message);
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      alert('Có lỗi xảy ra khi gửi đánh giá');
+      showError('Có lỗi xảy ra khi gửi đánh giá');
     } finally {
       setSubmittingFeedback(false);
     }
   };
 
   const handleCancelBooking = async (bookingId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt phòng này?')) return;
-
-    try {
-      const result = await myBookingsApi.cancelBooking(bookingId);
-      if (result.success) {
-        loadBookings();
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận hủy đặt phòng',
+      message: 'Bạn có chắc chắn muốn hủy đặt phòng này? Hành động này không thể hoàn tác.',
+      confirmText: 'Hủy đặt phòng',
+      cancelText: 'Không',
+      confirmColor: 'red',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        try {
+          const result = await myBookingsApi.cancelBooking(bookingId);
+          if (result.success) {
+            showSuccess('Đã hủy đặt phòng thành công');
+            loadBookings();
+          } else {
+            showError(result.message);
+          }
+        } catch (error) {
+          console.error('Error cancelling booking:', error);
+          showError('Có lỗi xảy ra khi hủy đặt phòng');
+        }
+      },
+    });
   };
 
   const handleCheckIn = async (booking: UserBooking) => {
-    if (!window.confirm('Bạn có chắc chắn muốn check-in cho đặt phòng này?')) return;
-
-    setProcessingBookingId(booking.id);
-    try {
-      const result = await myBookingsApi.checkIn(booking.id);
-      if (result.success) {
-        await loadBookings();
-        alert(result.message);
-      } else {
-        alert(result.message);
-      }
-    } catch (error) {
-      console.error('Error checking in:', error);
-      alert('Có lỗi xảy ra khi check-in');
-    } finally {
-      setProcessingBookingId(null);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận check-in',
+      message: `Bạn có chắc chắn muốn check-in cho đặt phòng "${booking.facility.name}"?\nThời gian: ${booking.startTime} - ${booking.endTime}`,
+      confirmText: 'Check-in',
+      cancelText: 'Hủy',
+      confirmColor: 'blue',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        setProcessingBookingId(booking.id);
+        try {
+          const result = await myBookingsApi.checkIn(booking.id);
+          if (result.success) {
+            showSuccess(result.message || 'Check-in thành công!');
+            await loadBookings();
+          } else {
+            showError(result.message || 'Không thể check-in. Vui lòng thử lại.');
+          }
+        } catch (error) {
+          console.error('Error checking in:', error);
+          showError('Có lỗi xảy ra khi check-in');
+        } finally {
+          setProcessingBookingId(null);
+        }
+      },
+    });
   };
 
   const handleCheckOut = async (booking: UserBooking) => {
-    if (!window.confirm('Bạn có chắc chắn muốn check-out cho đặt phòng này?')) return;
-
-    setProcessingBookingId(booking.id);
-    try {
-      const result = await myBookingsApi.checkOut(booking.id);
-      if (result.success) {
-        alert(result.message);
-        // Reload page after successful check-out
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
-      } else {
-        alert(result.message);
-        setProcessingBookingId(null);
-      }
-    } catch (error) {
-      console.error('Error checking out:', error);
-      alert('Có lỗi xảy ra khi check-out');
-      setProcessingBookingId(null);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Xác nhận check-out',
+      message: `Bạn có chắc chắn muốn check-out cho đặt phòng "${booking.facility.name}"?\nThời gian: ${booking.startTime} - ${booking.endTime}`,
+      confirmText: 'Check-out',
+      cancelText: 'Hủy',
+      confirmColor: 'purple',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        setProcessingBookingId(booking.id);
+        try {
+          const result = await myBookingsApi.checkOut(booking.id);
+          if (result.success) {
+            showSuccess(result.message || 'Check-out thành công!');
+            // Reload bookings after successful check-out
+            setTimeout(() => {
+              loadBookings();
+            }, 500);
+          } else {
+            showError(result.message || 'Không thể check-out. Vui lòng thử lại.');
+            setProcessingBookingId(null);
+          }
+        } catch (error) {
+          console.error('Error checking out:', error);
+          showError('Có lỗi xảy ra khi check-out');
+          setProcessingBookingId(null);
+        }
+      },
+    });
   };
 
   // Helper function to check if check-in is available
@@ -226,8 +274,6 @@ const MyBookingsPage = () => {
     if (booking.checkInTime) return false; // Already checked in
     
     try {
-      const now = new Date();
-      
       // Use full datetime from backend if available, otherwise construct from date and time
       let startTime: Date;
       
@@ -249,13 +295,17 @@ const MyBookingsPage = () => {
         return false;
       }
       
+      // TODO: Tạm thời bỏ validation thời gian để test
       // Can check-in from 15 minutes before start time to start time
-      const allowedCheckInStart = new Date(startTime);
-      allowedCheckInStart.setMinutes(allowedCheckInStart.getMinutes() - 15);
+      // const allowedCheckInStart = new Date(startTime);
+      // allowedCheckInStart.setMinutes(allowedCheckInStart.getMinutes() - 15);
       
-      const canCheckInNow = now >= allowedCheckInStart && now <= startTime;
+      // const canCheckInNow = now >= allowedCheckInStart && now <= startTime;
       
-      return canCheckInNow;
+      // return canCheckInNow;
+      
+      // Tạm thời luôn cho phép check-in (backend sẽ validate)
+      return true;
     } catch (error) {
       console.error('Error checking check-in availability:', error);
       // If error, show button anyway - backend will validate
@@ -272,8 +322,6 @@ const MyBookingsPage = () => {
     if (booking.checkOutTime) return false; // Already checked out
     
     try {
-      const now = new Date();
-      
       // Use full datetime from backend if available, otherwise construct from date and time
       let endTime: Date;
       
@@ -295,14 +343,18 @@ const MyBookingsPage = () => {
         return false;
       }
       
+      // TODO: Tạm thời bỏ validation thời gian để test
       // Can check-out from end time to 15 minutes after end time
-      const allowedCheckOutStart = new Date(endTime);
-      const allowedCheckOutEnd = new Date(endTime);
-      allowedCheckOutEnd.setMinutes(allowedCheckOutEnd.getMinutes() + 15);
+      // const allowedCheckOutStart = new Date(endTime);
+      // const allowedCheckOutEnd = new Date(endTime);
+      // allowedCheckOutEnd.setMinutes(allowedCheckOutEnd.getMinutes() + 15);
       
-      const canCheckOutNow = now >= allowedCheckOutStart && now <= allowedCheckOutEnd;
+      // const canCheckOutNow = now >= allowedCheckOutStart && now <= allowedCheckOutEnd;
       
-      return canCheckOutNow;
+      // return canCheckOutNow;
+      
+      // Tạm thời luôn cho phép check-out (backend sẽ validate)
+      return true;
     } catch (error) {
       console.error('Error checking check-out availability:', error);
       // If error, show button anyway - backend will validate
@@ -753,6 +805,19 @@ const MyBookingsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        confirmColor={confirmModal.confirmColor}
+        isLoading={processingBookingId !== null}
+      />
     </div>
   );
 };
