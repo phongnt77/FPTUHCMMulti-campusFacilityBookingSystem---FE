@@ -191,7 +191,14 @@ const BookingPage = () => {
     }
   };
 
-  const canSubmit = selectedSlot && purpose.trim() && numberOfPeople > 0;
+  // Check if facility is a sports field (capacity === -1 or type is Sport Facility/sports-field)
+  const isSportsField = facility && (
+    facility.capacity === -1 || 
+    facility.type === 'Sport Facility' || 
+    facility.type === 'sports-field'
+  );
+  
+  const canSubmit = selectedSlot && purpose.trim() && (isSportsField || numberOfPeople > 0);
 
   const handleOpenConfirmModal = () => {
     if (canSubmit) {
@@ -212,7 +219,7 @@ const BookingPage = () => {
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         purpose: purpose.trim(),
-        numberOfPeople,
+        numberOfPeople: isSportsField ? 1 : numberOfPeople, // Default to 1 for sports fields
         notes: notes.trim() || undefined,
       };
 
@@ -328,7 +335,9 @@ const BookingPage = () => {
                     <Users className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">Sức chứa</p>
-                      <p className="text-sm text-gray-600">{facility.capacity} người</p>
+                      <p className="text-sm text-gray-600">
+                        {facility.capacity === -1 ? 'Nhiều người' : `${facility.capacity} người`}
+                      </p>
                     </div>
                   </div>
                   
@@ -574,24 +583,26 @@ const BookingPage = () => {
                   />
                 </div>
 
-                {/* Number of People */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-2">
-                    <UserCheck className="w-4 h-4 inline mr-2" />
-                    Số người tham gia <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={numberOfPeople}
-                    onChange={(e) => setNumberOfPeople(Math.max(1, Math.min(facility.capacity, parseInt(e.target.value) || 1)))}
-                    min={1}
-                    max={facility.capacity}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Tối đa {facility.capacity} người
-                  </p>
-                </div>
+                {/* Number of People - Hidden for sports fields */}
+                {!isSportsField && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      <UserCheck className="w-4 h-4 inline mr-2" />
+                      Số người tham gia <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={numberOfPeople}
+                      onChange={(e) => setNumberOfPeople(Math.max(1, Math.min(facility.capacity, parseInt(e.target.value) || 1)))}
+                      min={1}
+                      max={facility.capacity}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tối đa {facility.capacity} người
+                    </p>
+                  </div>
+                )}
 
                 {/* Notes */}
                 <div>
@@ -684,10 +695,12 @@ const BookingPage = () => {
                           <span className="text-sm text-gray-600">Mục đích</span>
                           <span className="font-medium text-gray-900">{purpose}</span>
                         </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                          <span className="text-sm text-gray-600">Số người</span>
-                          <span className="font-medium text-gray-900">{numberOfPeople} người</span>
-                        </div>
+                        {!isSportsField && (
+                          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span className="text-sm text-gray-600">Số người</span>
+                            <span className="font-medium text-gray-900">{numberOfPeople} người</span>
+                          </div>
+                        )}
                         {notes && (
                           <div className="py-2">
                             <span className="text-sm text-gray-600 block mb-1">Ghi chú</span>
