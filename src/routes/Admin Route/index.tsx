@@ -4,6 +4,7 @@ import FacilityManagement from '../../page/Admin/FacilityManagement'
 import UserDashboard from '../../page/Admin/User Dashboard'
 import CampusManagement from '../../page/Admin/CampusManagement'
 import Report from '../../page/Admin/Report'
+import SystemSetting from '../../page/Admin/SystemSetting'
 import AdminSideBar from '../../components/adminSideBar'
 
 const AdminRoutes = () => {
@@ -17,6 +18,7 @@ const AdminRoutes = () => {
           <Route path="/campuses" element={<CampusManagement />} />
           <Route path="/users" element={<UserDashboard />} />
           <Route path="/reports" element={<Report />} />
+          <Route path="/settings" element={<SystemSetting />} />
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
       </main>

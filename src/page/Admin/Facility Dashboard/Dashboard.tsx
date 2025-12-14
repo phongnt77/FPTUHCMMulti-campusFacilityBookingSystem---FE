@@ -74,9 +74,10 @@ const Dashboard = () => {
         setError(response.error?.message || response.message || 'Không thể tải danh sách bookings')
         setBookings([])
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Đã xảy ra lỗi khi tải danh sách bookings'
       console.error('Error fetching bookings:', err)
-      setError(err.message || 'Đã xảy ra lỗi khi tải danh sách bookings')
+      setError(errorMessage)
       setBookings([])
     } finally {
       setLoading(false)
@@ -181,7 +182,7 @@ const Dashboard = () => {
       <div className="mx-auto max-w-7xl px-4">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Bảng điều khiển quản lý bookings</h1>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý yêu cầu đặt phòng</h1>
           <p className="text-gray-600">Xem xét và quản lý tất cả các yêu cầu đặt phòng trong hệ thống</p>
         </div>
 
