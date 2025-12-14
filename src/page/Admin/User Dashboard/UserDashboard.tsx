@@ -162,16 +162,40 @@ const UserDashboard = () => {
   }
 
   // Get campus name by campusId
-  const getCampusName = (campusId?: string): string => {
-    if (!campusId) return '-'
-    const campus = campuses.find((c) => c.campusId === campusId)
-    return campus ? campus.name : campusId
-  }
+ 
 
   // Format date (shorter format)
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return 'Never'
-    const date = new Date(dateString)
+    
+    let date: Date
+    
+    // Check if date is in DD/MM/YYYY HH:mm:ss format (from API)
+    if (dateString.includes('/') && dateString.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+      // Parse DD/MM/YYYY HH:mm:ss format
+      const parts = dateString.split(' ')
+      const datePart = parts[0].split('/')
+      const timePart = parts[1] ? parts[1].split(':') : ['00', '00', '00']
+      
+      // Create date: month is 0-indexed, so subtract 1
+      date = new Date(
+        parseInt(datePart[2]), // year
+        parseInt(datePart[1]) - 1, // month (0-indexed)
+        parseInt(datePart[0]), // day
+        parseInt(timePart[0]) || 0, // hour
+        parseInt(timePart[1]) || 0, // minute
+        parseInt(timePart[2]) || 0 // second
+      )
+    } else {
+      // Try to parse as ISO 8601 or other standard formats
+      date = new Date(dateString)
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+    
     return new Intl.DateTimeFormat('vi-VN', {
       day: '2-digit',
       month: '2-digit',
@@ -400,19 +424,13 @@ const UserDashboard = () => {
                     <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 min-w-[160px]">
                       Liên hệ
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 w-32">
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700 w-32">
                       Vai trò
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 w-28 hidden lg:table-cell">
-                      Campus
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 w-32">
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700 w-32">
                       Trạng thái
                     </th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 w-36 hidden xl:table-cell">
-                      Đăng nhập
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700 w-28 hidden xl:table-cell">
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700 w-28 hidden xl:table-cell">
                       Ngày tạo
                     </th>
                     <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-700 w-20">
@@ -451,7 +469,7 @@ const UserDashboard = () => {
                           <p className="text-xs text-gray-500 truncate">{user.phoneNumber}</p>
                         )}
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3 text-right">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getRoleBadgeColor(
                             user.roleId
@@ -460,10 +478,7 @@ const UserDashboard = () => {
                           {getRoleName(user.roleId)}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 hidden lg:table-cell">
-                        <span className="truncate block">{getCampusName(user.campusId)}</span>
-                      </td>
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3 text-right">
                         <span
                           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                             user.status === 'Active'
@@ -474,14 +489,7 @@ const UserDashboard = () => {
                           {user.status === 'Active' ? 'Hoạt động' : 'Ngừng'}
                         </span>
                       </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 hidden xl:table-cell">
-                        {user.lastLogin ? (
-                          <span className="truncate block">{formatDate(user.lastLogin)}</span>
-                        ) : (
-                          'Never'
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-xs text-gray-600 hidden xl:table-cell">
+                      <td className="px-3 py-3 text-right text-xs text-gray-600 hidden xl:table-cell">
                         <span className="truncate block">{formatDate(user.createdAt)}</span>
                       </td>
                       <td className="px-3 py-3 text-right text-sm font-medium">

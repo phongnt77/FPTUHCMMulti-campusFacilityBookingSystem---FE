@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Building2, Users, LogOut, MapPin, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, Building2, Users, LogOut, MapPin, BarChart3, Settings } from 'lucide-react'
 import { logoutAPI } from '../layout/Login/api/loginAPI'
 import { clearAuth } from '../utils/auth'
 
@@ -103,6 +103,20 @@ const AdminSideBar = () => {
           >
             <BarChart3 className="h-5 w-5" />
             <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink
+            to="/admin/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-orange-50 text-orange-600'
+                  : 'text-gray-700 hover:bg-gray-50 hover:text-orange-600'
+              }`
+            }
+          >
+            <Settings className="h-5 w-5" />
+            <span>System Settings</span>
           </NavLink>
         </nav>
 
