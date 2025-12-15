@@ -88,14 +88,43 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
         }
       }
 
-      const updateData: { phoneNumber?: string; avatarUrl?: string } = {};
+      // Normalize values để so sánh chính xác (null, undefined, empty string đều được xem là giống nhau)
+      const normalizeValue = (value: string | null | undefined): string => {
+        return (value || '').trim();
+      };
       
-      if (formData.phoneNumber !== profile?.phoneNumber) {
-        updateData.phoneNumber = formData.phoneNumber || undefined;
+      const currentPhone = normalizeValue(formData.phoneNumber);
+      const originalPhone = normalizeValue(profile?.phoneNumber || null);
+      
+      const currentAvatar = normalizeValue(formData.avatarUrl);
+      const originalAvatar = normalizeValue(profile?.avatarUrl || null);
+      
+      // Kiểm tra xem có thay đổi nào không
+      const phoneChanged = currentPhone !== originalPhone;
+      const avatarChanged = currentAvatar !== originalAvatar;
+      
+      // Nếu không có thay đổi nào, không cần gửi request
+      if (!phoneChanged && !avatarChanged) {
+        setIsLoading(false);
+        return;
       }
       
-      if (formData.avatarUrl !== profile?.avatarUrl) {
-        updateData.avatarUrl = formData.avatarUrl || undefined;
+      // Luôn gửi cả hai field để đảm bảo không bị mất dữ liệu
+      // Nếu field không thay đổi, gửi giá trị hiện tại từ profile
+      const updateData: { phoneNumber?: string; avatarUrl?: string } = {};
+      
+      if (phoneChanged) {
+        updateData.phoneNumber = currentPhone || undefined;
+      } else {
+        // Giữ nguyên giá trị hiện tại từ profile nếu không thay đổi
+        updateData.phoneNumber = profile?.phoneNumber || undefined;
+      }
+      
+      if (avatarChanged) {
+        updateData.avatarUrl = currentAvatar || undefined;
+      } else {
+        // Giữ nguyên giá trị hiện tại từ profile nếu không thay đổi
+        updateData.avatarUrl = profile?.avatarUrl || undefined;
       }
 
       const response = await updateProfile(updateData);
