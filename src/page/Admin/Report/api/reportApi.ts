@@ -68,6 +68,14 @@ export interface OverallStatistics {
   utilizationRate: number;
 }
 
+// Interface cho Period Info
+export interface PeriodInfo {
+  periodType: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+}
+
 // Interface cho Report Response
 export interface ReportResponse {
   success: boolean;
@@ -78,17 +86,10 @@ export interface ReportResponse {
   code?: number;
   message?: string;
   data?: {
-    // Overall statistics
-    totalBookings?: number;
-    approvedBookings?: number;
-    rejectedBookings?: number;
-    cancelledBookings?: number;
-    completedBookings?: number;
-    pendingBookings?: number;
-    approvalRate?: number;
-    cancellationRate?: number;
-    completionRate?: number;
-    utilizationRate?: number;
+    // Period info
+    period?: PeriodInfo;
+    // Overall statistics (nested in 'overall' object)
+    overall?: OverallStatistics;
     // Daily statistics
     dailyStats?: DailyStat[];
     // Facility statistics

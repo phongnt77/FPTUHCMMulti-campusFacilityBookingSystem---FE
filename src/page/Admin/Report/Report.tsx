@@ -181,30 +181,74 @@ const Report = () => {
     fetchReport();
   }, [fetchReport]);
 
-  // Get overall statistics
-  const overallStats = reportData
+  // Get overall statistics from nested 'overall' object
+  const overallStats = reportData?.overall
     ? {
-        totalBookings: reportData.totalBookings || 0,
-        approvedBookings: reportData.approvedBookings || 0,
-        rejectedBookings: reportData.rejectedBookings || 0,
-        cancelledBookings: reportData.cancelledBookings || 0,
-        completedBookings: reportData.completedBookings || 0,
-        pendingBookings: reportData.pendingBookings || 0,
-        approvalRate: reportData.approvalRate || 0,
-        cancellationRate: reportData.cancellationRate || 0,
-        completionRate: reportData.completionRate || 0,
-        utilizationRate: reportData.utilizationRate || 0,
+        totalBookings: reportData.overall.totalBookings || 0,
+        approvedBookings: reportData.overall.approvedBookings || 0,
+        rejectedBookings: reportData.overall.rejectedBookings || 0,
+        cancelledBookings: reportData.overall.cancelledBookings || 0,
+        completedBookings: reportData.overall.completedBookings || 0,
+        pendingBookings: reportData.overall.pendingBookings || 0,
+        approvalRate: reportData.overall.approvalRate || 0,
+        cancellationRate: reportData.overall.cancellationRate || 0,
+        completionRate: reportData.overall.completionRate || 0,
+        utilizationRate: reportData.overall.utilizationRate || 0,
       }
     : null;
 
+  // Helper function to parse date string from backend
+  // Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
+  const parseDateString = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
+    
+    try {
+      // Try parsing "dd/MM/yyyy HH:mm:ss" format
+      const ddMMyyyyWithTimeMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (ddMMyyyyWithTimeMatch) {
+        const [, day, month, year, hours, minutes, seconds] = ddMMyyyyWithTimeMatch;
+        return new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        );
+      }
+      
+      // Try parsing "dd/MM/yyyy" format (date only)
+      const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (ddMMyyyyMatch) {
+        const [, day, month, year] = ddMMyyyyMatch;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+      
+      // Fallback: try standard Date parsing (for ISO 8601 format)
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   // Format date for display
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    const date = parseDateString(dateString);
+    if (!date) return 'N/A';
+    try {
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch {
+      return 'N/A';
+    }
   };
 
   return (
