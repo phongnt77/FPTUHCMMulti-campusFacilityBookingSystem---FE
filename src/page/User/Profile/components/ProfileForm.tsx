@@ -32,12 +32,32 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
     }
   }, [profile]);
 
+  const validatePhoneNumber = (phone: string): string | null => {
+    if (!phone || phone.trim() === '') {
+      return null; // Cho phép để trống
+    }
+    
+    // Chỉ cho phép số
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Kiểm tra format: bắt đầu bằng 0 và có đúng 10 chữ số
+    if (digitsOnly.length !== 10) {
+      return 'Số điện thoại phải có đúng 10 chữ số';
+    }
+    
+    if (!digitsOnly.startsWith('0')) {
+      return 'Số điện thoại phải bắt đầu bằng số 0';
+    }
+    
+    return null;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
-    // Chỉ cho phép nhập số và các ký tự hợp lệ cho số điện thoại (+, -, (, ), khoảng trắng)
+    // Chỉ cho phép nhập số cho số điện thoại
     if (name === 'phoneNumber') {
-      const phoneValue = value.replace(/[^0-9+\-\s()]/g, '');
+      const phoneValue = value.replace(/\D/g, ''); // Chỉ giữ lại số
       setFormData((prev) => ({
         ...prev,
         [name]: phoneValue,
@@ -57,6 +77,17 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
     setIsLoading(true);
 
     try {
+      // Validate phone number trước khi submit
+      if (formData.phoneNumber && formData.phoneNumber.trim() !== '') {
+        const phoneError = validatePhoneNumber(formData.phoneNumber);
+        if (phoneError) {
+          setError(phoneError);
+          showError(phoneError);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const updateData: { phoneNumber?: string; avatarUrl?: string } = {};
       
       if (formData.phoneNumber !== profile?.phoneNumber) {
@@ -163,12 +194,16 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
             onChange={handleInputChange}
             disabled={!isEditing}
             placeholder="Nhập số điện thoại"
+            maxLength={10}
             className={`w-full px-3 py-2 border rounded-lg ${
               isEditing
                 ? 'border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
                 : 'border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed'
             }`}
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số
+          </p>
         </div>
 
         {/* Avatar URL - Editable */}
