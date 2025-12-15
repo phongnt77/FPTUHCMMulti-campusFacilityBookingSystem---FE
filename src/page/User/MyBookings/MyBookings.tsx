@@ -132,14 +132,59 @@ const MyBookingsPage = () => {
     return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-600' };
   };
 
+  // Helper function to parse date string from backend
+  // Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
+  // Or just "dd/MM/yyyy" for date only fields
+  const parseDateString = (dateString: string | null | undefined): Date | null => {
+    if (!dateString) return null;
+    
+    try {
+      // Try parsing "dd/MM/yyyy HH:mm:ss" format
+      const ddMMyyyyWithTimeMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+      if (ddMMyyyyWithTimeMatch) {
+        const [, day, month, year, hours, minutes, seconds] = ddMMyyyyWithTimeMatch;
+        return new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        );
+      }
+      
+      // Try parsing "dd/MM/yyyy" format (date only)
+      const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (ddMMyyyyMatch) {
+        const [, day, month, year] = ddMMyyyyMatch;
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+      
+      // Fallback: try standard Date parsing (for ISO 8601 format)
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    const date = parseDateString(dateString);
+    if (!date) return 'N/A';
+    try {
+      return date.toLocaleDateString('vi-VN', {
+        weekday: 'short',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
   };
 
   const openFeedbackModal = (booking: UserBooking) => {
@@ -274,35 +319,32 @@ const MyBookingsPage = () => {
     if (booking.checkInTime) return false; // Already checked in
     
     try {
-      // Use full datetime from backend if available, otherwise construct from date and time
-      let startTime: Date;
+      // Use parseDateString to handle backend date format
+      let startTime: Date | null = null;
       
       if (booking.startDateTime) {
-        // Use full ISO datetime from backend (more accurate)
-        startTime = new Date(booking.startDateTime);
-      } else {
-        // Fallback: construct from date and time strings
-        const bookingDate = new Date(booking.date);
-        const [startHour, startMinute] = booking.startTime.split(':').map(Number);
-        
-        startTime = new Date(bookingDate);
-        startTime.setHours(startHour, startMinute, 0, 0);
+        startTime = parseDateString(booking.startDateTime);
+      }
+      
+      // Fallback: construct from date and time strings
+      if (!startTime) {
+        const bookingDate = parseDateString(booking.date);
+        if (bookingDate && booking.startTime) {
+          const timeParts = booking.startTime.split(':');
+          if (timeParts.length >= 2) {
+            const [startHour, startMinute] = timeParts.map(Number);
+            startTime = new Date(bookingDate);
+            startTime.setHours(startHour, startMinute, 0, 0);
+          }
+        }
       }
       
       // Validate date
-      if (isNaN(startTime.getTime())) {
+      if (!startTime || isNaN(startTime.getTime())) {
         console.warn('Invalid date/time for booking:', booking.id);
-        return false;
+        // If error, show button anyway - backend will validate
+        return true;
       }
-      
-      // TODO: Tạm thời bỏ validation thời gian để test
-      // Can check-in from 15 minutes before start time to start time
-      // const allowedCheckInStart = new Date(startTime);
-      // allowedCheckInStart.setMinutes(allowedCheckInStart.getMinutes() - 15);
-      
-      // const canCheckInNow = now >= allowedCheckInStart && now <= startTime;
-      
-      // return canCheckInNow;
       
       // Tạm thời luôn cho phép check-in (backend sẽ validate)
       return true;
@@ -322,36 +364,32 @@ const MyBookingsPage = () => {
     if (booking.checkOutTime) return false; // Already checked out
     
     try {
-      // Use full datetime from backend if available, otherwise construct from date and time
-      let endTime: Date;
+      // Use parseDateString to handle backend date format
+      let endTime: Date | null = null;
       
       if (booking.endDateTime) {
-        // Use full ISO datetime from backend (more accurate)
-        endTime = new Date(booking.endDateTime);
-      } else {
-        // Fallback: construct from date and time strings
-        const bookingDate = new Date(booking.date);
-        const [endHour, endMinute] = booking.endTime.split(':').map(Number);
-        
-        endTime = new Date(bookingDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
+        endTime = parseDateString(booking.endDateTime);
+      }
+      
+      // Fallback: construct from date and time strings
+      if (!endTime) {
+        const bookingDate = parseDateString(booking.date);
+        if (bookingDate && booking.endTime) {
+          const timeParts = booking.endTime.split(':');
+          if (timeParts.length >= 2) {
+            const [endHour, endMinute] = timeParts.map(Number);
+            endTime = new Date(bookingDate);
+            endTime.setHours(endHour, endMinute, 0, 0);
+          }
+        }
       }
       
       // Validate date
-      if (isNaN(endTime.getTime())) {
+      if (!endTime || isNaN(endTime.getTime())) {
         console.warn('Invalid date/time for booking:', booking.id);
-        return false;
+        // If error, show button anyway - backend will validate
+        return true;
       }
-      
-      // TODO: Tạm thời bỏ validation thời gian để test
-      // Can check-out from end time to 15 minutes after end time
-      // const allowedCheckOutStart = new Date(endTime);
-      // const allowedCheckOutEnd = new Date(endTime);
-      // allowedCheckOutEnd.setMinutes(allowedCheckOutEnd.getMinutes() + 15);
-      
-      // const canCheckOutNow = now >= allowedCheckOutStart && now <= allowedCheckOutEnd;
-      
-      // return canCheckOutNow;
       
       // Tạm thời luôn cho phép check-out (backend sẽ validate)
       return true;
@@ -559,8 +597,8 @@ const MyBookingsPage = () => {
                                 <span>
                                   {(() => {
                                     try {
-                                      const date = new Date(booking.checkInTime);
-                                      if (isNaN(date.getTime())) return booking.checkInTime;
+                                      const date = parseDateString(booking.checkInTime);
+                                      if (!date) return booking.checkInTime;
                                       return date.toLocaleString('vi-VN', {
                                         day: '2-digit',
                                         month: '2-digit',
@@ -582,8 +620,8 @@ const MyBookingsPage = () => {
                                 <span>
                                   {(() => {
                                     try {
-                                      const date = new Date(booking.checkOutTime);
-                                      if (isNaN(date.getTime())) return booking.checkOutTime;
+                                      const date = parseDateString(booking.checkOutTime);
+                                      if (!date) return booking.checkOutTime;
                                       return date.toLocaleString('vi-VN', {
                                         day: '2-digit',
                                         month: '2-digit',

@@ -27,8 +27,8 @@ const AdminSideBar = () => {
           <div className="flex items-center gap-2">
             <span className="rounded bg-orange-500 px-2 py-1 text-sm font-semibold text-white">FPTU</span>
             <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold text-gray-800">Admin Panel</span>
-              <span className="text-xs text-gray-500">Facility Booking</span>
+              <span className="text-sm font-semibold text-gray-800">Trang quản lý - Admin</span>
+              <span className="text-xs text-gray-500">Đặt cơ sở vật chất</span>
             </div>
           </div>
         </div>
@@ -46,7 +46,7 @@ const AdminSideBar = () => {
             }
           >
             <LayoutDashboard className="h-5 w-5" />
-            <span>Booking Approval</span>
+            <span>Quản lý yêu cầu</span>
           </NavLink>
 
           <NavLink
@@ -60,7 +60,7 @@ const AdminSideBar = () => {
             }
           >
             <Building2 className="h-5 w-5" />
-            <span>Facility Management</span>
+            <span>Quản lý cơ sở vật chất</span>
           </NavLink>
 
           <NavLink
@@ -74,7 +74,7 @@ const AdminSideBar = () => {
             }
           >
             <MapPin className="h-5 w-5" />
-            <span>Campus Management</span>
+            <span>Quản lý campus</span>
           </NavLink>
 
           <NavLink
@@ -88,7 +88,7 @@ const AdminSideBar = () => {
             }
           >
             <Users className="h-5 w-5" />
-            <span>Users</span>
+            <span>Quản lý user</span>
           </NavLink>
 
           <NavLink
@@ -102,7 +102,7 @@ const AdminSideBar = () => {
             }
           >
             <BarChart3 className="h-5 w-5" />
-            <span>Dashboard</span>
+            <span>Báo cáo & thống kê</span>
           </NavLink>
 
           <NavLink
@@ -116,7 +116,7 @@ const AdminSideBar = () => {
             }
           >
             <Settings className="h-5 w-5" />
-            <span>System Settings</span>
+            <span>Cài đặt hệ thống</span>
           </NavLink>
         </nav>
 
@@ -127,7 +127,7 @@ const AdminSideBar = () => {
             className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-red-600"
           >
             <LogOut className="h-5 w-5" />
-            <span>Logout</span>
+            <span>Đăng xuất</span>
           </button>
         </div>
       </div>

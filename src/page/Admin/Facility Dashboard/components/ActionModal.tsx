@@ -12,6 +12,38 @@ interface ActionModalProps {
   loading?: boolean
 }
 
+// Helper function to parse date string from backend
+// Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
+const parseDateString = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null;
+  
+  try {
+    // Try parsing "dd/MM/yyyy HH:mm:ss" format
+    const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (ddMMyyyyMatch) {
+      const [, day, month, year, hours, minutes, seconds] = ddMMyyyyMatch;
+      return new Date(
+        parseInt(year),
+        parseInt(month) - 1, // Month is 0-indexed
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      );
+    }
+    
+    // Fallback: try standard Date parsing (for ISO 8601 format)
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 const ActionModal = ({
   show,
   booking,
@@ -24,24 +56,34 @@ const ActionModal = ({
 }: ActionModalProps) => {
   if (!show || !booking || !actionType) return null
 
-  // Parse ISO date strings từ API
-  const startTime = new Date(booking.startTime)
-  const endTime = new Date(booking.endTime)
+  // Parse date strings từ API (supports "dd/MM/yyyy HH:mm:ss" format)
+  const startTime = parseDateString(booking.startTime);
+  const endTime = parseDateString(booking.endTime);
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('vi-VN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(date)
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'N/A';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    } catch {
+      return 'N/A';
+    }
   }
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date)
+  const formatTime = (date: Date | null) => {
+    if (!date) return 'N/A';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+    } catch {
+      return 'N/A';
+    }
   }
 
   return (

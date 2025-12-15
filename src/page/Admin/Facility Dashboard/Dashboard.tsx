@@ -182,8 +182,8 @@ const Dashboard = () => {
       <div className="mx-auto max-w-7xl px-4">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý yêu cầu đặt phòng</h1>
-          <p className="text-gray-600">Xem xét và quản lý tất cả các yêu cầu đặt phòng trong hệ thống</p>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900">Quản lý yêu cầu đặt cơ sở vật chất</h1>
+          <p className="text-gray-600">Xem xét và quản lý tất cả các yêu cầu đặt cơ sở vật chất trong hệ thống</p>
         </div>
 
         {/* Stats Cards */}

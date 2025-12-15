@@ -25,6 +25,16 @@ adminBookingApiClient.interceptors.request.use(
   }
 );
 
+// Interface cho Feedback trong Booking
+export interface BookingFeedback {
+  feedbackId: string;
+  rating: number;
+  comments: string | null;
+  reportIssue: boolean;
+  issueDescription: string | null;
+  createdAt: string;
+}
+
 // Interface cho Booking từ API response
 export interface AdminBooking {
   bookingId: string;
@@ -32,21 +42,22 @@ export interface AdminBooking {
   userName: string;
   facilityId: string;
   facilityName: string;
-  startTime: string; // ISO 8601 format
-  endTime: string; // ISO 8601 format
+  startTime: string; // dd/MM/yyyy HH:mm:ss format
+  endTime: string; // dd/MM/yyyy HH:mm:ss format
   purpose: string;
   category: string;
   estimatedAttendees: number;
   specialRequirements: string;
   status: 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected' | 'Cancelled' | 'Completed' | 'No_Show';
   approvedBy: string | null;
-  approvedAt: string | null; // ISO 8601 format
+  approvedAt: string | null;
   rejectionReason: string | null;
-  checkInTime: string | null; // ISO 8601 format
-  checkOutTime: string | null; // ISO 8601 format
+  checkInTime: string | null;
+  checkOutTime: string | null;
   isUsed: boolean;
-  createdAt: string; // ISO 8601 format
-  updatedAt: string; // ISO 8601 format
+  createdAt: string;
+  updatedAt: string;
+  feedback: BookingFeedback | null; // Feedback từ user (nếu có)
 }
 
 // Interface cho Pagination

@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Calendar, Clock, MapPin, Users, FileText } from 'lucide-react'
+import { CheckCircle2, XCircle, Calendar, Clock, MapPin, Users, FileText, Star, AlertTriangle, MessageSquare } from 'lucide-react'
 import type { AdminBooking } from '../api/adminBookingApi'
 
 interface BookingCardProps {
@@ -7,26 +7,68 @@ interface BookingCardProps {
   onReject: (bookingId: string) => void
 }
 
-const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
-  // Parse ISO date strings từ API
-  const startTime = new Date(booking.startTime)
-  const endTime = new Date(booking.endTime)
-  const createdAt = new Date(booking.createdAt)
+// Helper function to parse date string from backend
+// Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
+const parseDateString = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null;
+  
+  try {
+    // Try parsing "dd/MM/yyyy HH:mm:ss" format
+    const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (ddMMyyyyMatch) {
+      const [, day, month, year, hours, minutes, seconds] = ddMMyyyyMatch;
+      return new Date(
+        parseInt(year),
+        parseInt(month) - 1, // Month is 0-indexed
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      );
+    }
+    
+    // Fallback: try standard Date parsing (for ISO 8601 format)
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+};
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('vi-VN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }).format(date)
+const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
+  // Parse date strings từ API (supports "dd/MM/yyyy HH:mm:ss" format)
+  const startTime = parseDateString(booking.startTime);
+  const endTime = parseDateString(booking.endTime);
+  const createdAt = parseDateString(booking.createdAt);
+
+  const formatDate = (date: Date | null) => {
+    if (!date) return 'N/A';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    } catch {
+      return 'N/A';
+    }
   }
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).format(date)
+  const formatTime = (date: Date | null) => {
+    if (!date) return 'N/A';
+    try {
+      return new Intl.DateTimeFormat('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).format(date);
+    } catch {
+      return 'N/A';
+    }
   }
 
   // Parse specialRequirements từ string (JSON) nếu có
@@ -210,12 +252,55 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             </div>
           )}
 
+          {/* Feedback từ người dùng */}
+          {booking.feedback && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-green-600" />
+                  <p className="text-xs font-semibold text-green-700">Đánh giá của người dùng</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`h-4 w-4 ${
+                        star <= booking.feedback!.rating
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                  <span className="ml-1 text-xs font-medium text-gray-600">
+                    ({booking.feedback.rating}/5)
+                  </span>
+                </div>
+              </div>
+              {booking.feedback.comments && (
+                <p className="text-xs text-green-700 italic mb-2">"{booking.feedback.comments}"</p>
+              )}
+              {booking.feedback.reportIssue && booking.feedback.issueDescription && (
+                <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 p-2">
+                  <div className="flex items-center gap-1 mb-1">
+                    <AlertTriangle className="h-3 w-3 text-orange-600" />
+                    <p className="text-xs font-semibold text-orange-700">Báo cáo sự cố</p>
+                  </div>
+                  <p className="text-xs text-orange-600">{booking.feedback.issueDescription}</p>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-2">
+                Đánh giá vào {formatDate(parseDateString(booking.feedback.createdAt))} lúc{' '}
+                {formatTime(parseDateString(booking.feedback.createdAt))}
+              </p>
+            </div>
+          )}
+
           {booking.approvedBy && booking.approvedAt && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <CheckCircle2 className="h-3 w-3 text-green-600" />
               <span>
-                Đã duyệt bởi {booking.approvedBy} vào {formatDate(new Date(booking.approvedAt))} lúc{' '}
-                {formatTime(new Date(booking.approvedAt))}
+                Đã duyệt bởi {booking.approvedBy} vào {formatDate(parseDateString(booking.approvedAt))} lúc{' '}
+                {formatTime(parseDateString(booking.approvedAt))}
               </span>
             </div>
           )}

@@ -3,6 +3,47 @@ import type { Facility, Campus, FacilityType } from '../../../../types';
 
 export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
 
+// Helper function to parse date string from backend
+// Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
+const parseDateString = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null;
+  
+  try {
+    // Try parsing "dd/MM/yyyy HH:mm:ss" format
+    const ddMMyyyyWithTimeMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+    if (ddMMyyyyWithTimeMatch) {
+      const [, day, month, year, hours, minutes, seconds] = ddMMyyyyWithTimeMatch;
+      return new Date(
+        parseInt(year),
+        parseInt(month) - 1,
+        parseInt(day),
+        parseInt(hours),
+        parseInt(minutes),
+        parseInt(seconds)
+      );
+    }
+    
+    // Try parsing "dd/MM/yyyy" format (date only)
+    const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (ddMMyyyyMatch) {
+      const [, day, month, year] = ddMMyyyyMatch;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    }
+    
+    // Fallback: try standard Date parsing (for ISO 8601 format)
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
+
 export interface Feedback {
   id: string;
   rating: number;
@@ -102,13 +143,36 @@ const mapFacilityType = (typeName: string): FacilityType => {
 
 // Map backend booking to frontend UserBooking
 const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbackResponse): UserBooking => {
-  const startDate = new Date(b.startTime);
-  const endDate = new Date(b.endTime);
+  const startDate = parseDateString(b.startTime);
+  const endDate = parseDateString(b.endTime);
+  
+  // Format time as HH:mm
+  const formatTime = (date: Date | null): string => {
+    if (!date) return 'N/A';
+    try {
+      return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch {
+      return 'N/A';
+    }
+  };
+  
+  // Format date as yyyy-MM-dd for date field
+  const formatDateISO = (date: Date | null): string => {
+    if (!date) return '';
+    try {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  };
   
   return {
     id: b.bookingId,
     lessonBookingId: b.bookingId,
-    lessonBookingDate: b.startTime.split('T')[0],
+    lessonBookingDate: formatDateISO(startDate),
     facilityId: b.facilityId,
     facility: {
       id: b.facilityId,
@@ -127,11 +191,11 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
       isActive: true,
       description: b.facilityDescription || '',
     },
-    date: b.startTime.split('T')[0],
-    startTime: startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    endTime: endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    startDateTime: b.startTime, // Keep full ISO datetime for time comparison
-    endDateTime: b.endTime, // Keep full ISO datetime for time comparison
+    date: formatDateISO(startDate),
+    startTime: formatTime(startDate),
+    endTime: formatTime(endDate),
+    startDateTime: b.startTime, // Keep original for time comparison
+    endDateTime: b.endTime, // Keep original for time comparison
     purpose: b.purpose,
     numberOfPeople: b.estimatedAttendees,
     status: mapStatus(b.status),
