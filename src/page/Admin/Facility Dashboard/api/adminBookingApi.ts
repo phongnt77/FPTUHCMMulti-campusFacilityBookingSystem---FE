@@ -53,6 +53,7 @@ export interface AdminBooking {
   specialRequirements: string;
   status: 'Draft' | 'Pending_Approval' | 'Approved' | 'Rejected' | 'Cancelled' | 'Completed' | 'No_Show';
   approvedBy: string | null;
+  approvedByUserName?: string | null;
   approvedAt: string | null;
   rejectionReason: string | null;
   checkInTime: string | null;
@@ -234,7 +235,7 @@ export const rejectBooking = async (
     if (error.response) {
       const result = error.response.data as BookingActionResponse;
       if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi từ chối booking');
+        throw new Error(result.error.code || result.message || 'Lỗi khi từ chối booking');
       }
       throw new Error(error.response.statusText || 'Lỗi khi từ chối booking');
     }

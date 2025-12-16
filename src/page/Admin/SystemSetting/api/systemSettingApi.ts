@@ -30,6 +30,7 @@ export interface SystemSettings {
   minimumBookingHoursBeforeStart: number;
   checkInMinutesBeforeStart: number;
   checkInMinutesAfterStart: number;
+  checkoutMinRatio: number;
 }
 
 // Interface cho API Response
@@ -47,6 +48,7 @@ export interface UpdateSystemSettingsRequest {
   minimumBookingHoursBeforeStart?: number;
   checkInMinutesBeforeStart?: number;
   checkInMinutesAfterStart?: number;
+  checkoutMinRatio?: number;
 }
 
 /**
