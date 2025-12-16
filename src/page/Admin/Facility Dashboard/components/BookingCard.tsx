@@ -224,7 +224,7 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
               </div>
               {booking.studentId ? (
                 <div className="flex flex-col gap-0.5 mt-1">
-                  <p className="text-xs text-gray-500">Student ID: {booking.studentId}</p>
+                  <p className="text-xs text-gray-500">MSSV: {booking.studentId}</p>
                   {booking.userPhoneNumber ? (
                     <p className="text-xs text-gray-500">SĐT: {booking.userPhoneNumber}</p>
                   ) : (
