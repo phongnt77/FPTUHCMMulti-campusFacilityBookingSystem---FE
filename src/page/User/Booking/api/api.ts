@@ -75,10 +75,8 @@ const mapFacilityType = (typeName: string): FacilityType => {
     'Meeting Room': 'Meeting Room',
     'Computer Lab': 'Laboratory',
     'Sports Court': 'Sport Facility',
-    'Auditorium': 'Auditorium',
     'Laboratory': 'Laboratory',
     'Sport Facility': 'Sport Facility',
-    'Library': 'Library',
   };
   return typeMap[typeName] || 'Classroom';
 };

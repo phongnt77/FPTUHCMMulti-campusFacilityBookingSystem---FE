@@ -126,8 +126,6 @@ const MyBookingsPage = () => {
       'lab-room': { bg: 'bg-amber-100', text: 'text-amber-600' },
       'Sport Facility': { bg: 'bg-emerald-100', text: 'text-emerald-600' },
       'sports-field': { bg: 'bg-emerald-100', text: 'text-emerald-600' },
-      'Auditorium': { bg: 'bg-rose-100', text: 'text-rose-600' },
-      'Library': { bg: 'bg-cyan-100', text: 'text-cyan-600' },
     };
     return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-600' };
   };

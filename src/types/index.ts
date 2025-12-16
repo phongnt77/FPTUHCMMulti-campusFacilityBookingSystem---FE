@@ -4,9 +4,7 @@ export type FacilityType =
   | 'Classroom' 
   | 'Meeting Room' 
   | 'Laboratory' 
-  | 'Sport Facility' 
-  | 'Auditorium' 
-  | 'Library'
+  | 'Sport Facility'
   | 'meeting-room'  // Legacy
   | 'lab-room'      // Legacy
   | 'sports-field'; // Legacy

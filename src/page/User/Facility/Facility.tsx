@@ -112,10 +112,6 @@ const FacilityPage = () => {
       case 'Sport Facility':
       case 'sports-field':
         return <Trophy className="w-5 h-5" />;
-      case 'Auditorium':
-      case 'Library':
-      default:
-        return <Building2 className="w-5 h-5" />;
     }
   };
 
@@ -162,18 +158,6 @@ const FacilityPage = () => {
         text: 'text-emerald-700', 
         border: 'border-emerald-200',
         accent: 'bg-emerald-500'
-      },
-      'Auditorium': { 
-        bg: 'bg-rose-50', 
-        text: 'text-rose-700', 
-        border: 'border-rose-200',
-        accent: 'bg-rose-500'
-      },
-      'Library': { 
-        bg: 'bg-cyan-50', 
-        text: 'text-cyan-700', 
-        border: 'border-cyan-200',
-        accent: 'bg-cyan-500'
       },
     };
     return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', accent: 'bg-gray-500' };
@@ -357,7 +341,7 @@ const FacilityPage = () => {
               >
                 Tất cả
               </button>
-              {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility', 'Auditorium', 'Library'] as FacilityType[]).map((type) => {
+              {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility'] as FacilityType[]).map((type) => {
                 const colors = getFacilityTypeColor(type);
                 const isSelected = selectedType === type;
                 return (
@@ -516,7 +500,7 @@ const FacilityPage = () => {
         {/* Stats Summary */}
         {!loading && facilities.length > 0 && (
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-            {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility', 'Auditorium', 'Library'] as FacilityType[]).map((type) => {
+            {(['Classroom', 'Meeting Room', 'Laboratory', 'Sport Facility'] as FacilityType[]).map((type) => {
               const count = facilities.filter(f => f.type === type).length;
               if (count === 0) return null;
               const colors = getFacilityTypeColor(type);

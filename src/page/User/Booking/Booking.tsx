@@ -100,10 +100,6 @@ const BookingPage = () => {
       case 'Sport Facility':
       case 'sports-field':
         return <Trophy className="w-6 h-6" />;
-      case 'Auditorium':
-      case 'Library':
-      default:
-        return <Building2 className="w-6 h-6" />;
     }
   };
 
@@ -143,16 +139,6 @@ const BookingPage = () => {
         bg: 'bg-emerald-100', 
         text: 'text-emerald-700',
         gradient: 'from-emerald-500 to-teal-600'
-      },
-      'Auditorium': { 
-        bg: 'bg-rose-100', 
-        text: 'text-rose-700',
-        gradient: 'from-rose-500 to-pink-600'
-      },
-      'Library': { 
-        bg: 'bg-cyan-100', 
-        text: 'text-cyan-700',
-        gradient: 'from-cyan-500 to-teal-600'
       },
     };
     return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-700', gradient: 'from-gray-500 to-gray-600' };
