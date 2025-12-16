@@ -49,6 +49,18 @@ const MyBookingsPage = () => {
   const [submittingCheckInOut, setSubmittingCheckInOut] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-refresh để cập nhật trạng thái check-in/check-out theo thời gian thực
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    // Update thời gian mỗi 30 giây
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -398,13 +410,30 @@ const MyBookingsPage = () => {
     openCheckOutModal(booking);
   };
 
+  // Mock time helper - để test, set trong console: localStorage.setItem('mockTime', '2025-12-16T09:00:00')
+  const getCurrentTime = (): Date => {
+    const mockTime = localStorage.getItem('mockTime');
+    if (mockTime) {
+      const parsedMock = new Date(mockTime);
+      if (!isNaN(parsedMock.getTime())) {
+        console.log('🕐 Using mock time:', parsedMock.toLocaleString('vi-VN'));
+        return parsedMock;
+      }
+    }
+    // Sử dụng currentTime state để trigger re-render khi thời gian thay đổi
+    return currentTime;
+  };
+
   // Helper function to check if check-in is available
-  // Check-in: từ 15 phút trước StartTime đến StartTime
-  // Ví dụ: đặt 9-10h thì check-in từ 8h45-9h
-  const canCheckIn = (booking: UserBooking): boolean => {
+  // Check-in: từ 15 phút trước StartTime đến 15 phút sau StartTime
+  // Ví dụ: đặt 9-10h thì check-in từ 8h45-9h15
+  const CHECK_IN_MINUTES_BEFORE = 15;
+  const CHECK_IN_MINUTES_AFTER = 15;
+  
+  const getCheckInStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
     // Basic checks
-    if (booking.status !== 'Approved') return false;
-    if (booking.checkInTime) return false; // Already checked in
+    if (booking.status !== 'Approved') return { canShow: false, isEnabled: false };
+    if (booking.checkInTime) return { canShow: false, isEnabled: false }; // Already checked in
     
     try {
       // Use parseDateString to handle backend date format
@@ -430,62 +459,51 @@ const MyBookingsPage = () => {
       // Validate date
       if (!startTime || isNaN(startTime.getTime())) {
         console.warn('Invalid date/time for booking:', booking.id);
-        // If error, show button anyway - backend will validate
-        return true;
+        return { canShow: true, isEnabled: true }; // Let backend validate
       }
       
-      // Tạm thời luôn cho phép check-in (backend sẽ validate)
-      return true;
+      const now = getCurrentTime();
+      const allowedCheckInStart = new Date(startTime.getTime() - CHECK_IN_MINUTES_BEFORE * 60 * 1000);
+      const allowedCheckInEnd = new Date(startTime.getTime() + CHECK_IN_MINUTES_AFTER * 60 * 1000);
+      
+      // Check if within check-in window
+      if (now < allowedCheckInStart) {
+        const diffMs = allowedCheckInStart.getTime() - now.getTime();
+        const diffMins = Math.ceil(diffMs / 60000);
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        const timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins} phút`;
+        return { 
+          canShow: true, 
+          isEnabled: false, 
+          disabledReason: `Có thể check-in sau ${timeStr} (từ ${allowedCheckInStart.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})` 
+        };
+      }
+      
+      if (now > allowedCheckInEnd) {
+        return { 
+          canShow: true, 
+          isEnabled: false, 
+          disabledReason: `Đã hết thời gian check-in (trước ${allowedCheckInEnd.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})` 
+        };
+      }
+      
+      return { canShow: true, isEnabled: true };
     } catch (error) {
       console.error('Error checking check-in availability:', error);
-      // If error, show button anyway - backend will validate
-      return true;
+      return { canShow: true, isEnabled: true }; // Let backend validate
     }
   };
 
   // Helper function to check if check-out is available
-  // Check-out: từ EndTime đến 15 phút sau EndTime
-  // Ví dụ: đặt 9-10h thì check-out từ 10h-10h15
-  const canCheckOut = (booking: UserBooking): boolean => {
-    if (booking.status !== 'Approved' && booking.status !== 'Finish') return false;
-    if (!booking.checkInTime) return false; // Not checked in yet
-    if (booking.checkOutTime) return false; // Already checked out
+  // Check-out: Bất kỳ lúc nào sau khi đã check-in
+  const getCheckOutStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
+    if (booking.status !== 'Approved' && booking.status !== 'Finish') return { canShow: false, isEnabled: false };
+    if (!booking.checkInTime) return { canShow: false, isEnabled: false }; // Not checked in yet
+    if (booking.checkOutTime) return { canShow: false, isEnabled: false }; // Already checked out
     
-    try {
-      // Use parseDateString to handle backend date format
-      let endTime: Date | null = null;
-      
-      if (booking.endDateTime) {
-        endTime = parseDateString(booking.endDateTime);
-      }
-      
-      // Fallback: construct from date and time strings
-      if (!endTime) {
-        const bookingDate = parseDateString(booking.date);
-        if (bookingDate && booking.endTime) {
-          const timeParts = booking.endTime.split(':');
-          if (timeParts.length >= 2) {
-            const [endHour, endMinute] = timeParts.map(Number);
-            endTime = new Date(bookingDate);
-            endTime.setHours(endHour, endMinute, 0, 0);
-          }
-        }
-      }
-      
-      // Validate date
-      if (!endTime || isNaN(endTime.getTime())) {
-        console.warn('Invalid date/time for booking:', booking.id);
-        // If error, show button anyway - backend will validate
-        return true;
-      }
-      
-      // Tạm thời luôn cho phép check-out (backend sẽ validate)
-      return true;
-    } catch (error) {
-      console.error('Error checking check-out availability:', error);
-      // If error, show button anyway - backend will validate
-      return true;
-    }
+    // Sau khi đã check-in, có thể check-out bất cứ lúc nào
+    return { canShow: true, isEnabled: true };
   };
 
   const renderStars = (count: number, interactive = false, onSelect?: (n: number) => void) => {
@@ -601,8 +619,8 @@ const MyBookingsPage = () => {
               // Allow feedback for Finish bookings OR bookings that have been checked out
               const canFeedback = (booking.status === 'Finish' || booking.checkOutTime) && !booking.feedback;
               const canCancel = booking.status === 'Pending' || booking.status === 'Approved';
-              const showCheckIn = canCheckIn(booking);
-              const showCheckOut = canCheckOut(booking);
+              const checkInStatus = getCheckInStatus(booking);
+              const checkOutStatus = getCheckOutStatus(booking);
               const isProcessing = processingBookingId === booking.id;
 
               return (
@@ -730,43 +748,67 @@ const MyBookingsPage = () => {
 
                       {/* Actions */}
                       <div className="flex lg:flex-col gap-2 lg:items-end">
-                        {showCheckIn && (
-                          <button
-                            onClick={() => handleCheckIn(booking)}
-                            disabled={isProcessing}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Đang xử lý...
-                              </>
-                            ) : (
-                              <>
-                                <LogIn className="w-4 h-4" />
-                                Check-in
-                              </>
+                        {checkInStatus.canShow && (
+                          <div className="flex flex-col items-end">
+                            <button
+                              onClick={() => checkInStatus.isEnabled && handleCheckIn(booking)}
+                              disabled={isProcessing || !checkInStatus.isEnabled}
+                              title={checkInStatus.disabledReason}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:cursor-not-allowed ${
+                                checkInStatus.isEnabled
+                                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 disabled:opacity-50'
+                                  : 'bg-gray-200 text-gray-500'
+                              }`}
+                            >
+                              {isProcessing ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Đang xử lý...
+                                </>
+                              ) : (
+                                <>
+                                  <LogIn className="w-4 h-4" />
+                                  Check-in
+                                </>
+                              )}
+                            </button>
+                            {checkInStatus.disabledReason && (
+                              <span className="text-xs text-gray-500 mt-1 max-w-[200px] text-right">
+                                {checkInStatus.disabledReason}
+                              </span>
                             )}
-                          </button>
+                          </div>
                         )}
-                        {showCheckOut && (
-                          <button
-                            onClick={() => handleCheckOut(booking)}
-                            disabled={isProcessing}
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Đang xử lý...
-                              </>
-                            ) : (
-                              <>
-                                <LogOut className="w-4 h-4" />
-                                Check-out
-                              </>
+                        {checkOutStatus.canShow && (
+                          <div className="flex flex-col items-end">
+                            <button
+                              onClick={() => checkOutStatus.isEnabled && handleCheckOut(booking)}
+                              disabled={isProcessing || !checkOutStatus.isEnabled}
+                              title={checkOutStatus.disabledReason}
+                              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:cursor-not-allowed ${
+                                checkOutStatus.isEnabled
+                                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:opacity-90 disabled:opacity-50'
+                                  : 'bg-gray-200 text-gray-500'
+                              }`}
+                            >
+                              {isProcessing ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Đang xử lý...
+                                </>
+                              ) : (
+                                <>
+                                  <LogOut className="w-4 h-4" />
+                                  Check-out
+                                </>
+                              )}
+                            </button>
+                            {checkOutStatus.disabledReason && (
+                              <span className="text-xs text-gray-500 mt-1 max-w-[200px] text-right">
+                                {checkOutStatus.disabledReason}
+                              </span>
                             )}
-                          </button>
+                          </div>
                         )}
                         {canFeedback && (
                           <button
