@@ -31,6 +31,7 @@ export interface UserProfile {
   email: string;
   fullName: string;
   phoneNumber: string | null;
+  studentId: string | null;
   userName: string;
   roleId: string;
   roleName: string;
@@ -58,6 +59,14 @@ export interface ProfileResponse {
 export interface UpdateProfileRequest {
   phoneNumber?: string;
   avatarUrl?: string;
+  studentId?: string;
+}
+
+// Interface cho Update Profile với Avatar Upload
+export interface UpdateProfileWithAvatarRequest {
+  phoneNumber?: string;
+  studentId?: string;
+  avatar?: File;
 }
 
 // Interface cho Change Password Request
@@ -110,7 +119,7 @@ export const getProfile = async (): Promise<ProfileResponse> => {
 
 /**
  * Cập nhật thông tin profile
- * @param profileData - Thông tin cần cập nhật (phoneNumber, avatarUrl)
+ * @param profileData - Thông tin cần cập nhật (phoneNumber, avatarUrl, studentId)
  * @returns Promise với profile đã được cập nhật
  * @description
  * - PUT /api/users/profile
@@ -136,6 +145,53 @@ export const updateProfile = async (profileData: UpdateProfileRequest): Promise<
     }
     
     console.error('Update profile API error:', error);
+    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  }
+};
+
+/**
+ * Cập nhật thông tin profile với upload avatar trực tiếp
+ * @param profileData - Thông tin cần cập nhật (phoneNumber, studentId, avatar file)
+ * @returns Promise với profile đã được cập nhật
+ * @description
+ * - PUT /api/users/profile/upload (multipart/form-data)
+ * - Upload avatar trực tiếp lên Cloudinary
+ */
+export const updateProfileWithAvatar = async (profileData: UpdateProfileWithAvatarRequest): Promise<ProfileResponse> => {
+  try {
+    const formData = new FormData();
+    
+    if (profileData.phoneNumber) {
+      formData.append('phoneNumber', profileData.phoneNumber);
+    }
+    if (profileData.studentId) {
+      formData.append('studentId', profileData.studentId);
+    }
+    if (profileData.avatar) {
+      formData.append('avatar', profileData.avatar);
+    }
+
+    const response = await profileApiClient.put<ProfileResponse>('/api/users/profile/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      const result = error.response.data as ProfileResponse;
+      if (result?.error) {
+        throw new Error(result.error.message || 'Lỗi khi cập nhật profile');
+      }
+      throw new Error(error.response.statusText || 'Lỗi khi cập nhật profile');
+    }
+    
+    if (error.request) {
+      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+    }
+    
+    console.error('Update profile with avatar API error:', error);
     throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
   }
 };

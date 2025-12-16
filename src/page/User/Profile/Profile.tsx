@@ -68,6 +68,7 @@ const Profile = () => {
       authUser.fullName = updatedProfile.fullName;
       authUser.phoneNumber = updatedProfile.phoneNumber;
       authUser.avatarUrl = updatedProfile.avatarUrl;
+      authUser.studentId = updatedProfile.studentId;
       sessionStorage.setItem('auth_user', JSON.stringify(authUser));
       window.dispatchEvent(new Event('auth:loginSuccess')); // Trigger update
     }

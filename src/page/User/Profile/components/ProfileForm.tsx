@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { type UserProfile, updateProfile } from '../api/profileApi';
+import { useState, useEffect, useRef } from 'react';
+import { type UserProfile, updateProfileWithAvatar } from '../api/profileApi';
 import { useToast } from '../../../../components/toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, X, Camera } from 'lucide-react';
 
 interface ProfileFormProps {
   profile: UserProfile | null;
@@ -10,25 +10,41 @@ interface ProfileFormProps {
 
 const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
   const { showSuccess, showError } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     phoneNumber: '',
+    studentId: '',
     avatarUrl: '',
   });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug: log profile roleName
+  console.log('Profile roleName:', profile?.roleName);
+  
+  // Kiểm tra Student role - hỗ trợ cả tiếng Anh và tiếng Việt
+  const isStudent = profile?.roleName?.toLowerCase() === 'student' || 
+                    profile?.roleName === 'Student' ||
+                    profile?.roleName === 'Sinh viên' ||
+                    profile?.roleId === 'RL0001'; // Fallback: check roleId
 
   useEffect(() => {
     if (profile) {
+      console.log('Profile data:', profile);
       setFormData({
         fullName: profile.fullName || '',
         email: profile.email || '',
         phoneNumber: profile.phoneNumber || '',
+        studentId: profile.studentId || '',
         avatarUrl: profile.avatarUrl || '',
       });
+      setAvatarPreview(profile.avatarUrl || null);
     }
   }, [profile]);
 
@@ -50,6 +66,55 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
     }
     
     return null;
+  };
+
+  const validateStudentId = (studentId: string): string | null => {
+    if (!studentId || studentId.trim() === '') {
+      return null; // Cho phép để trống
+    }
+    
+    // Format: SE/SS/IB/MC + 6 số, 2 số đầu >= 14
+    const regex = /^(SE|SS|IB|MC)(1[4-9]|[2-9][0-9])[0-9]{4}$/;
+    if (!regex.test(studentId.toUpperCase())) {
+      return 'MSSV không hợp lệ. Ví dụ đúng: SE173162, SS180123';
+    }
+    
+    return null;
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showError('Chỉ chấp nhận file ảnh (jpg, png, gif, webp)');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      showError('Kích thước file không được vượt quá 10MB');
+      return;
+    }
+
+    setAvatarFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(profile?.avatarUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,7 +153,18 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
         }
       }
 
-      // Normalize values để so sánh chính xác (null, undefined, empty string đều được xem là giống nhau)
+      // Validate studentId nếu là student
+      if (isStudent && formData.studentId && formData.studentId.trim() !== '') {
+        const studentIdError = validateStudentId(formData.studentId);
+        if (studentIdError) {
+          setError(studentIdError);
+          showError(studentIdError);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Normalize values để so sánh
       const normalizeValue = (value: string | null | undefined): string => {
         return (value || '').trim();
       };
@@ -96,43 +172,37 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
       const currentPhone = normalizeValue(formData.phoneNumber);
       const originalPhone = normalizeValue(profile?.phoneNumber || null);
       
-      const currentAvatar = normalizeValue(formData.avatarUrl);
-      const originalAvatar = normalizeValue(profile?.avatarUrl || null);
+      const currentStudentId = normalizeValue(formData.studentId);
+      const originalStudentId = normalizeValue(profile?.studentId || null);
       
       // Kiểm tra xem có thay đổi nào không
       const phoneChanged = currentPhone !== originalPhone;
-      const avatarChanged = currentAvatar !== originalAvatar;
+      const studentIdChanged = isStudent && currentStudentId !== originalStudentId;
+      const hasNewAvatar = avatarFile !== null;
       
-      // Nếu không có thay đổi nào, không cần gửi request
-      if (!phoneChanged && !avatarChanged) {
+      // Nếu không có thay đổi nào
+      if (!phoneChanged && !studentIdChanged && !hasNewAvatar) {
+        showSuccess('Không có thay đổi nào để lưu');
+        setIsEditing(false);
         setIsLoading(false);
         return;
       }
       
-      // Luôn gửi cả hai field để đảm bảo không bị mất dữ liệu
-      // Nếu field không thay đổi, gửi giá trị hiện tại từ profile
-      const updateData: { phoneNumber?: string; avatarUrl?: string } = {};
-      
-      if (phoneChanged) {
-        updateData.phoneNumber = currentPhone || undefined;
-      } else {
-        // Giữ nguyên giá trị hiện tại từ profile nếu không thay đổi
-        updateData.phoneNumber = profile?.phoneNumber || undefined;
-      }
-      
-      if (avatarChanged) {
-        updateData.avatarUrl = currentAvatar || undefined;
-      } else {
-        // Giữ nguyên giá trị hiện tại từ profile nếu không thay đổi
-        updateData.avatarUrl = profile?.avatarUrl || undefined;
-      }
-
-      const response = await updateProfile(updateData);
+      // Sử dụng API upload với form-data
+      const response = await updateProfileWithAvatar({
+        phoneNumber: currentPhone || undefined,
+        studentId: isStudent ? (currentStudentId || undefined) : undefined,
+        avatar: avatarFile || undefined,
+      });
 
       if (response.success && response.data) {
         showSuccess('Cập nhật profile thành công!');
         onUpdateSuccess(response.data);
         setIsEditing(false);
+        setAvatarFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       } else {
         const errorMsg = response.error?.message || 'Cập nhật profile thất bại';
         setError(errorMsg);
@@ -153,8 +223,14 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
         fullName: profile.fullName || '',
         email: profile.email || '',
         phoneNumber: profile.phoneNumber || '',
+        studentId: profile.studentId || '',
         avatarUrl: profile.avatarUrl || '',
       });
+      setAvatarPreview(profile.avatarUrl || null);
+      setAvatarFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
     setIsEditing(false);
     setError(null);
@@ -235,37 +311,102 @@ const ProfileForm = ({ profile, onUpdateSuccess }: ProfileFormProps) => {
           </p>
         </div>
 
-        {/* Avatar URL - Editable */}
+        {/* Student ID - Only for Students */}
+        {isStudent && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              MSSV (Mã số sinh viên) <span className="text-orange-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="studentId"
+              value={formData.studentId}
+              onChange={handleInputChange}
+              disabled={!isEditing}
+              placeholder="Ví dụ: SE173162"
+              maxLength={8}
+              className={`w-full px-3 py-2 border rounded-lg uppercase ${
+                isEditing
+                  ? 'border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
+                  : 'border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed'
+              }`}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Format: SE/SS/IB/MC + 6 số. Ví dụ: SE173162, SS180123
+            </p>
+            {!formData.studentId && (
+              <p className="mt-1 text-xs text-orange-600">
+                ⚠️ Bạn cần cập nhật MSSV để có thể đặt phòng
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Avatar Upload */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            URL Avatar
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Ảnh đại diện
           </label>
-          <input
-            type="url"
-            name="avatarUrl"
-            value={formData.avatarUrl}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            placeholder="https://example.com/avatar.jpg"
-            className={`w-full px-3 py-2 border rounded-lg ${
-              isEditing
-                ? 'border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500'
-                : 'border-gray-300 bg-gray-50 text-gray-600 cursor-not-allowed'
-            }`}
-          />
-          {formData.avatarUrl && (
-            <div className="mt-2">
-              <p className="text-xs text-gray-500 mb-1">Preview:</p>
-              <img
-                src={formData.avatarUrl}
-                alt="Avatar preview"
-                className="w-16 h-16 rounded-full border-2 border-gray-200 object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
+          
+          <div className="flex items-start gap-4">
+            {/* Avatar Preview */}
+            <div className="relative">
+              {avatarPreview ? (
+                <img
+                  src={avatarPreview}
+                  alt="Avatar preview"
+                  className="w-24 h-24 rounded-full border-2 border-gray-200 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(formData.fullName);
+                  }}
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <Camera className="w-8 h-8 text-gray-400" />
+                </div>
+              )}
+              
+              {/* Remove button */}
+              {isEditing && avatarFile && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Upload Button */}
+            {isEditing && (
+              <div className="flex-1">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                >
+                  <Upload className="w-4 h-4" />
+                  Chọn ảnh
+                </button>
+                <p className="mt-2 text-xs text-gray-500">
+                  Định dạng: JPG, PNG, GIF, WebP. Tối đa 10MB.
+                </p>
+                {avatarFile && (
+                  <p className="mt-1 text-xs text-green-600">
+                    ✓ Đã chọn: {avatarFile.name}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error Message */}
