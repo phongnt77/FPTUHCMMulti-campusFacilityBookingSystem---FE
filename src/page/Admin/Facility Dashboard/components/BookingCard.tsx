@@ -424,8 +424,13 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
           )}
 
           {/* Check-in/Check-out images */}
-          {(booking.checkInImages?.length || booking.checkOutImages?.length) && (
-            <CheckInOutImagesSection booking={booking} parseDateString={parseDateString} formatDate={formatDate} formatTime={formatTime} />
+          {(((booking.checkInImages?.length ?? 0) > 0) || ((booking.checkOutImages?.length ?? 0) > 0)) && (
+            <CheckInOutImagesSection
+              booking={booking}
+              parseDateString={parseDateString}
+              formatDate={formatDate}
+              formatTime={formatTime}
+            />
           )}
 
           {/* Feedback từ người dùng */}
@@ -475,7 +480,7 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <CheckCircle2 className="h-3 w-3 text-green-600" />
               <span>
-                Đã duyệt bởi {booking.approvedBy} vào {formatDate(parseDateString(booking.approvedAt))} lúc{' '}
+                Đã duyệt bởi {booking.approvedByUserName || booking.approvedBy} vào {formatDate(parseDateString(booking.approvedAt))} lúc{' '}
                 {formatTime(parseDateString(booking.approvedAt))}
               </span>
             </div>

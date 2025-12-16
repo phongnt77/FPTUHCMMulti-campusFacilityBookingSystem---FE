@@ -122,9 +122,34 @@ const CampusManagement = () => {
     }
   }
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+  // Format date an toàn với nhiều định dạng (bao gồm dd/MM/yyyy HH:mm:ss từ backend)
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
+
+    let date = new Date(dateString)
+
+    // Nếu Date mặc định không parse được, thử parse theo định dạng dd/MM/yyyy HH:mm:ss
+    if (isNaN(date.getTime())) {
+      const match = dateString.match(
+        /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/
+      )
+
+      if (match) {
+        const [, day, month, year, hour, minute, second] = match
+        date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour),
+          Number(minute),
+          Number(second)
+        )
+      } else {
+        // Nếu vẫn không parse được thì trả về nguyên chuỗi để tránh crash UI
+        return dateString
+      }
+    }
+
     return new Intl.DateTimeFormat('vi-VN', {
       year: 'numeric',
       month: 'short',
