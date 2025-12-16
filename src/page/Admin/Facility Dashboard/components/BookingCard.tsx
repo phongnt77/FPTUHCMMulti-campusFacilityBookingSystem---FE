@@ -1,4 +1,5 @@
-import { CheckCircle2, XCircle, Calendar, Clock, MapPin, Users, FileText, Star, AlertTriangle, MessageSquare } from 'lucide-react'
+import { CheckCircle2, XCircle, Calendar, Clock, MapPin, Users, FileText, Star, AlertTriangle, MessageSquare, Image, LogIn, LogOut } from 'lucide-react'
+import { useState } from 'react'
 import type { AdminBooking } from '../api/adminBookingApi'
 
 interface BookingCardProps {
@@ -37,6 +38,157 @@ const parseDateString = (dateString: string | null | undefined): Date | null => 
   } catch {
     return null;
   }
+};
+
+// Component hiển thị ảnh check-in/check-out
+interface CheckInOutImagesSectionProps {
+  booking: AdminBooking;
+  parseDateString: (dateString: string | null | undefined) => Date | null;
+  formatDate: (date: Date | null) => string;
+  formatTime: (date: Date | null) => string;
+}
+
+const CheckInOutImagesSection = ({ booking, parseDateString, formatDate, formatTime }: CheckInOutImagesSectionProps) => {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'check-in' | 'check-out'>('check-in');
+
+  const hasCheckInImages = booking.checkInImages && booking.checkInImages.length > 0;
+  const hasCheckOutImages = booking.checkOutImages && booking.checkOutImages.length > 0;
+
+  // Auto-select tab based on available images
+  const currentTab = activeTab === 'check-in' && !hasCheckInImages ? 'check-out' : 
+                     activeTab === 'check-out' && !hasCheckOutImages ? 'check-in' : activeTab;
+
+  return (
+    <>
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image className="h-4 w-4 text-blue-600" />
+            <p className="text-xs font-semibold text-blue-700">Ảnh xác nhận</p>
+          </div>
+          
+          {/* Tabs */}
+          <div className="flex gap-1">
+            {hasCheckInImages && (
+              <button
+                onClick={() => setActiveTab('check-in')}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  currentTab === 'check-in'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-blue-600 hover:bg-blue-100'
+                }`}
+              >
+                <LogIn className="h-3 w-3" />
+                Check-in ({booking.checkInImages?.length})
+              </button>
+            )}
+            {hasCheckOutImages && (
+              <button
+                onClick={() => setActiveTab('check-out')}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  currentTab === 'check-out'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-purple-600 hover:bg-purple-100'
+                }`}
+              >
+                <LogOut className="h-3 w-3" />
+                Check-out ({booking.checkOutImages?.length})
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Check-in content */}
+        {currentTab === 'check-in' && hasCheckInImages && (
+          <div>
+            <div className="flex items-center gap-2 text-xs text-blue-600 mb-2">
+              <Clock className="h-3 w-3" />
+              <span>
+                Check-in lúc {formatTime(parseDateString(booking.checkInTime))} ngày {formatDate(parseDateString(booking.checkInTime))}
+              </span>
+            </div>
+            {booking.checkInNote && (
+              <p className="text-xs text-blue-700 italic mb-2">Ghi chú: "{booking.checkInNote}"</p>
+            )}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {booking.checkInImages?.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative cursor-pointer group"
+                  onClick={() => setSelectedImage(img)}
+                >
+                  <img
+                    src={img}
+                    alt={`Check-in ${idx + 1}`}
+                    className="w-full h-16 object-cover rounded-lg border border-blue-200 hover:border-blue-400 transition-colors"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
+                    <span className="text-white text-xs opacity-0 group-hover:opacity-100">Xem</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Check-out content */}
+        {currentTab === 'check-out' && hasCheckOutImages && (
+          <div>
+            <div className="flex items-center gap-2 text-xs text-purple-600 mb-2">
+              <Clock className="h-3 w-3" />
+              <span>
+                Check-out lúc {formatTime(parseDateString(booking.checkOutTime))} ngày {formatDate(parseDateString(booking.checkOutTime))}
+              </span>
+            </div>
+            {booking.checkOutNote && (
+              <p className="text-xs text-purple-700 italic mb-2">Ghi chú: "{booking.checkOutNote}"</p>
+            )}
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {booking.checkOutImages?.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative cursor-pointer group"
+                  onClick={() => setSelectedImage(img)}
+                >
+                  <img
+                    src={img}
+                    alt={`Check-out ${idx + 1}`}
+                    className="w-full h-16 object-cover rounded-lg border border-purple-200 hover:border-purple-400 transition-colors"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 rounded-lg transition-colors flex items-center justify-center">
+                    <span className="text-white text-xs opacity-0 group-hover:opacity-100">Xem</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh]">
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <XCircle className="h-8 w-8" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Preview"
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
 };
 
 const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
@@ -216,26 +368,25 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm font-semibold text-gray-900">{booking.userName}</p>
-                {!booking.studentId && (
+                {!booking.userStudentId && (
                   <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700">
                     Lecturer
                   </span>
                 )}
               </div>
-              {booking.studentId ? (
-                <div className="flex flex-col gap-0.5 mt-1">
-                  <p className="text-xs text-gray-500">MSSV: {booking.studentId}</p>
+              <div className="flex flex-col gap-0.5 mt-1">
+                  {booking.userStudentId && (
+                    <p className="text-xs text-gray-500">MSSV: {booking.userStudentId}</p>
+                  )}
+                  {booking.userEmail && (
+                    <p className="text-xs text-gray-500">Email: {booking.userEmail}</p>
+                  )}
                   {booking.userPhoneNumber ? (
                     <p className="text-xs text-gray-500">SĐT: {booking.userPhoneNumber}</p>
                   ) : (
                     <p className="text-xs text-gray-400 italic">Chưa cập nhật số điện thoại</p>
                   )}
                 </div>
-              ) : (
-                booking.userPhoneNumber && (
-                  <p className="text-xs text-gray-500 mt-1">SĐT: {booking.userPhoneNumber}</p>
-                )
-              )}
             </div>
           </div>
 
@@ -270,6 +421,11 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
               </div>
               <p className="text-xs text-red-600">{booking.rejectionReason}</p>
             </div>
+          )}
+
+          {/* Check-in/Check-out images */}
+          {(booking.checkInImages?.length || booking.checkOutImages?.length) && (
+            <CheckInOutImagesSection booking={booking} parseDateString={parseDateString} formatDate={formatDate} formatTime={formatTime} />
           )}
 
           {/* Feedback từ người dùng */}

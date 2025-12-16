@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Calendar, Clock, MapPin, Users, Star, MessageSquare,
   CheckCircle2, XCircle, Clock3, AlertCircle, ChevronRight,
   Building2, FlaskConical, Trophy, Loader2, X, Send,
-  LogIn, LogOut
+  LogIn, LogOut, Camera, Image as ImageIcon, Trash2
 } from 'lucide-react';
 import type { FacilityType } from '../../../types';
 import { myBookingsApi, type UserBooking, type BookingStatus } from './api/api';
@@ -32,6 +32,22 @@ const MyBookingsPage = () => {
 
   // Check-in/Check-out loading state
   const [processingBookingId, setProcessingBookingId] = useState<string | null>(null);
+
+  // Check-in/Check-out Modal State
+  const [checkInOutModal, setCheckInOutModal] = useState<{
+    isOpen: boolean;
+    type: 'check-in' | 'check-out';
+    booking: UserBooking | null;
+  }>({
+    isOpen: false,
+    type: 'check-in',
+    booking: null,
+  });
+  const [checkInOutNote, setCheckInOutNote] = useState('');
+  const [checkInOutImages, setCheckInOutImages] = useState<File[]>([]);
+  const [checkInOutImagePreviews, setCheckInOutImagePreviews] = useState<string[]>([]);
+  const [submittingCheckInOut, setSubmittingCheckInOut] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -247,65 +263,139 @@ const MyBookingsPage = () => {
     });
   };
 
-  const handleCheckIn = async (booking: UserBooking) => {
-    setConfirmModal({
+  // Open check-in modal
+  const openCheckInModal = (booking: UserBooking) => {
+    setCheckInOutModal({
       isOpen: true,
-      title: 'Xác nhận check-in',
-      message: `Bạn có chắc chắn muốn check-in cho đặt phòng "${booking.facility.name}"?\nThời gian: ${booking.startTime} - ${booking.endTime}`,
-      confirmText: 'Check-in',
-      cancelText: 'Hủy',
-      confirmColor: 'blue',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false });
-        setProcessingBookingId(booking.id);
-        try {
-          const result = await myBookingsApi.checkIn(booking.id);
-          if (result.success) {
-            showSuccess(result.message || 'Check-in thành công!');
-            await loadBookings();
-          } else {
-            showError(result.message || 'Không thể check-in. Vui lòng thử lại.');
-          }
-        } catch (error) {
-          console.error('Error checking in:', error);
-          showError('Có lỗi xảy ra khi check-in');
-        } finally {
-          setProcessingBookingId(null);
-        }
-      },
+      type: 'check-in',
+      booking,
     });
+    setCheckInOutNote('');
+    setCheckInOutImages([]);
+    setCheckInOutImagePreviews([]);
   };
 
-  const handleCheckOut = async (booking: UserBooking) => {
-    setConfirmModal({
+  // Open check-out modal
+  const openCheckOutModal = (booking: UserBooking) => {
+    setCheckInOutModal({
       isOpen: true,
-      title: 'Xác nhận check-out',
-      message: `Bạn có chắc chắn muốn check-out cho đặt phòng "${booking.facility.name}"?\nThời gian: ${booking.startTime} - ${booking.endTime}`,
-      confirmText: 'Check-out',
-      cancelText: 'Hủy',
-      confirmColor: 'purple',
-      onConfirm: async () => {
-        setConfirmModal({ ...confirmModal, isOpen: false });
-        setProcessingBookingId(booking.id);
-        try {
-          const result = await myBookingsApi.checkOut(booking.id);
-          if (result.success) {
-            showSuccess(result.message || 'Check-out thành công!');
-            // Reload bookings after successful check-out
-            setTimeout(() => {
-              loadBookings();
-            }, 500);
-          } else {
-            showError(result.message || 'Không thể check-out. Vui lòng thử lại.');
-            setProcessingBookingId(null);
-          }
-        } catch (error) {
-          console.error('Error checking out:', error);
-          showError('Có lỗi xảy ra khi check-out');
-          setProcessingBookingId(null);
-        }
-      },
+      type: 'check-out',
+      booking,
     });
+    setCheckInOutNote('');
+    setCheckInOutImages([]);
+    setCheckInOutImagePreviews([]);
+  };
+
+  // Close check-in/check-out modal
+  const closeCheckInOutModal = () => {
+    if (!submittingCheckInOut) {
+      setCheckInOutModal({ isOpen: false, type: 'check-in', booking: null });
+      setCheckInOutNote('');
+      setCheckInOutImages([]);
+      setCheckInOutImagePreviews([]);
+    }
+  };
+
+  // Handle image selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages = Array.from(files);
+    const totalImages = checkInOutImages.length + newImages.length;
+
+    if (totalImages > 5) {
+      showError('Chỉ được upload tối đa 5 ảnh');
+      return;
+    }
+
+    // Validate file types
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const invalidFiles = newImages.filter(file => !validTypes.includes(file.type));
+    if (invalidFiles.length > 0) {
+      showError('Chỉ hỗ trợ định dạng: jpg, jpeg, png, gif, webp');
+      return;
+    }
+
+    // Validate file sizes (max 10MB each)
+    const oversizedFiles = newImages.filter(file => file.size > 10 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      showError('Mỗi ảnh không được vượt quá 10MB');
+      return;
+    }
+
+    // Create previews
+    const newPreviews = newImages.map(file => URL.createObjectURL(file));
+
+    setCheckInOutImages(prev => [...prev, ...newImages]);
+    setCheckInOutImagePreviews(prev => [...prev, ...newPreviews]);
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove an image
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(checkInOutImagePreviews[index]);
+    setCheckInOutImages(prev => prev.filter((_, i) => i !== index));
+    setCheckInOutImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Submit check-in/check-out
+  const handleSubmitCheckInOut = async () => {
+    if (!checkInOutModal.booking) return;
+
+    // Validate: at least 1 image required
+    if (checkInOutImages.length === 0) {
+      showError(`Vui lòng upload ít nhất 1 ảnh để ${checkInOutModal.type === 'check-in' ? 'check-in' : 'check-out'}`);
+      return;
+    }
+
+    setSubmittingCheckInOut(true);
+    setProcessingBookingId(checkInOutModal.booking.id);
+
+    try {
+      let result;
+      if (checkInOutModal.type === 'check-in') {
+        result = await myBookingsApi.checkIn(
+          checkInOutModal.booking.id,
+          checkInOutNote.trim() || undefined,
+          checkInOutImages
+        );
+      } else {
+        result = await myBookingsApi.checkOut(
+          checkInOutModal.booking.id,
+          checkInOutNote.trim() || undefined,
+          checkInOutImages
+        );
+      }
+
+      if (result.success) {
+        showSuccess(result.message);
+        closeCheckInOutModal();
+        await loadBookings();
+      } else {
+        showError(result.message);
+      }
+    } catch (error) {
+      console.error(`Error ${checkInOutModal.type}:`, error);
+      showError(`Có lỗi xảy ra khi ${checkInOutModal.type === 'check-in' ? 'check-in' : 'check-out'}`);
+    } finally {
+      setSubmittingCheckInOut(false);
+      setProcessingBookingId(null);
+    }
+  };
+
+  // Legacy handlers - now just open modals
+  const handleCheckIn = (booking: UserBooking) => {
+    openCheckInModal(booking);
+  };
+
+  const handleCheckOut = (booking: UserBooking) => {
+    openCheckOutModal(booking);
   };
 
   // Helper function to check if check-in is available
@@ -837,6 +927,173 @@ const MyBookingsPage = () => {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Check-in/Check-out Modal */}
+      {checkInOutModal.isOpen && checkInOutModal.booking && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div
+              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+              onClick={closeCheckInOutModal}
+            />
+
+            <div className="relative inline-block w-full max-w-lg my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-2xl shadow-xl">
+              {/* Modal Header */}
+              <div className={`px-6 py-4 ${checkInOutModal.type === 'check-in' ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-purple-500 to-purple-600'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
+                      {checkInOutModal.type === 'check-in' ? (
+                        <LogIn className="w-5 h-5 text-white" />
+                      ) : (
+                        <LogOut className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold text-white">
+                      {checkInOutModal.type === 'check-in' ? 'Check-in' : 'Check-out'}
+                    </h3>
+                  </div>
+                  {!submittingCheckInOut && (
+                    <button
+                      onClick={closeCheckInOutModal}
+                      className="text-white/80 hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="px-6 py-5">
+                {/* Booking Info */}
+                <div className="p-3 bg-gray-50 rounded-lg mb-5">
+                  <p className="font-semibold text-gray-900">{checkInOutModal.booking.facility.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {formatDate(checkInOutModal.booking.date)} • {checkInOutModal.booking.startTime} - {checkInOutModal.booking.endTime}
+                  </p>
+                </div>
+
+                {/* Image Upload */}
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    <Camera className="w-4 h-4 inline mr-1" />
+                    Ảnh xác nhận <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {checkInOutModal.type === 'check-in' 
+                      ? 'Chụp ảnh tình trạng phòng khi bắt đầu sử dụng (bắt buộc, tối đa 5 ảnh)'
+                      : 'Chụp ảnh tình trạng phòng sau khi sử dụng xong (bắt buộc, tối đa 5 ảnh)'
+                    }
+                  </p>
+
+                  {/* Image Previews */}
+                  {checkInOutImagePreviews.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      {checkInOutImagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  {checkInOutImages.length < 5 && (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                    >
+                      <ImageIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Nhấn để chọn ảnh
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {checkInOutImages.length}/5 ảnh • JPG, PNG, GIF, WebP (max 10MB)
+                      </p>
+                    </div>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    multiple
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    <MessageSquare className="w-4 h-4 inline mr-1" />
+                    Ghi chú (tùy chọn)
+                  </label>
+                  <textarea
+                    value={checkInOutNote}
+                    onChange={(e) => setCheckInOutNote(e.target.value)}
+                    placeholder={
+                      checkInOutModal.type === 'check-in'
+                        ? 'Ví dụ: Phòng đã có sẵn 20 ghế, 1 bảng trắng...'
+                        : 'Ví dụ: Phòng đã được dọn sạch, đủ số ghế...'
+                    }
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 flex gap-3">
+                <button
+                  onClick={closeCheckInOutModal}
+                  disabled={submittingCheckInOut}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSubmitCheckInOut}
+                  disabled={submittingCheckInOut || checkInOutImages.length === 0}
+                  className={`flex-1 px-4 py-2.5 text-white rounded-xl font-medium transition-opacity disabled:opacity-50 flex items-center justify-center gap-2 ${
+                    checkInOutModal.type === 'check-in'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:opacity-90'
+                      : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:opacity-90'
+                  }`}
+                >
+                  {submittingCheckInOut ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      {checkInOutModal.type === 'check-in' ? (
+                        <LogIn className="w-4 h-4" />
+                      ) : (
+                        <LogOut className="w-4 h-4" />
+                      )}
+                      {checkInOutModal.type === 'check-in' ? 'Xác nhận Check-in' : 'Xác nhận Check-out'}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

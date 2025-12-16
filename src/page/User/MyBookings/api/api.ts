@@ -42,8 +42,6 @@ const parseDateString = (dateString: string | null | undefined): Date | null => 
   }
 };
 
-export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
-
 export interface Feedback {
   id: string;
   rating: number;
@@ -421,14 +419,26 @@ export const myBookingsApi = {
     }
   },
 
-  // Check-in booking - API ONLY
-  checkIn: async (id: string): Promise<{ success: boolean; message: string }> => {
+  // Check-in booking with images - API ONLY
+  checkIn: async (id: string, note?: string, images?: File[]): Promise<{ success: boolean; message: string }> => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(id)}`;
-      console.log('Checking in booking:', id);
+      // Use check-in-with-images endpoint with FormData
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(id)}-with-images`;
+      console.log('Checking in booking with images:', id);
+      
+      const formData = new FormData();
+      if (note) {
+        formData.append('note', note);
+      }
+      if (images && images.length > 0) {
+        images.forEach((image) => {
+          formData.append('images', image);
+        });
+      }
       
       const response = await apiFetch<BackendBookingResponse>(url, {
         method: 'POST',
+        body: formData,
       });
       
       if (response.success) {
@@ -448,14 +458,26 @@ export const myBookingsApi = {
     }
   },
 
-  // Check-out booking - API ONLY
-  checkOut: async (id: string): Promise<{ success: boolean; message: string }> => {
+  // Check-out booking with images - API ONLY
+  checkOut: async (id: string, note?: string, images?: File[]): Promise<{ success: boolean; message: string }> => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(id)}`;
-      console.log('Checking out booking:', id);
+      // Use check-out-with-images endpoint with FormData
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(id)}-with-images`;
+      console.log('Checking out booking with images:', id);
+      
+      const formData = new FormData();
+      if (note) {
+        formData.append('note', note);
+      }
+      if (images && images.length > 0) {
+        images.forEach((image) => {
+          formData.append('images', image);
+        });
+      }
       
       const response = await apiFetch<BackendBookingResponse>(url, {
         method: 'POST',
+        body: formData,
       });
       
       if (response.success) {

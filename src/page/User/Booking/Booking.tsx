@@ -208,6 +208,42 @@ const BookingPage = () => {
       };
 
       const response = await bookingApi.submitBooking(bookingRequest);
+      
+      // Xử lý khi booking bị rejected (lỗi validation từ backend)
+      if (response.status === 'rejected') {
+        // Kiểm tra nếu lỗi yêu cầu cập nhật profile (số điện thoại, email, MSSV)
+        const profileRequiredErrors = [
+          'số điện thoại',
+          'phone',
+          'email',
+          'mssv',
+          'hồ sơ cá nhân',
+          'profile',
+          'student'
+        ];
+        
+        const isProfileError = profileRequiredErrors.some(
+          keyword => response.message.toLowerCase().includes(keyword)
+        );
+        
+        if (isProfileError) {
+          // Hiển thị confirm dialog để chuyển đến trang profile
+          const shouldRedirect = window.confirm(
+            `${response.message}\n\nBạn có muốn đến trang Hồ sơ để cập nhật thông tin không?`
+          );
+          
+          if (shouldRedirect) {
+            setShowConfirmModal(false);
+            navigate('/profile');
+            return;
+          }
+        } else {
+          // Lỗi khác, hiển thị thông báo
+          alert(response.message);
+        }
+        return;
+      }
+      
       setBookingId(response.id);
       setBookingSuccess(true);
     } catch (error) {

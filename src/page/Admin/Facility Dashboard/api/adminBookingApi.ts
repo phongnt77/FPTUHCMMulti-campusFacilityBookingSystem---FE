@@ -40,8 +40,9 @@ export interface AdminBooking {
   bookingId: string;
   userId: string;
   userName: string;
+  userEmail?: string | null;
   userPhoneNumber?: string | null;
-  studentId?: string | null;
+  userStudentId?: string | null;
   facilityId: string;
   facilityName: string;
   startTime: string; // dd/MM/yyyy HH:mm:ss format
@@ -55,7 +56,11 @@ export interface AdminBooking {
   approvedAt: string | null;
   rejectionReason: string | null;
   checkInTime: string | null;
+  checkInNote?: string | null;
+  checkInImages?: string[] | null;
   checkOutTime: string | null;
+  checkOutNote?: string | null;
+  checkOutImages?: string[] | null;
   isUsed: boolean;
   createdAt: string;
   updatedAt: string;

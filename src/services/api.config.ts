@@ -96,10 +96,15 @@ export const apiFetch = async <T>(
   try {
     const token = sessionStorage.getItem('auth_token');
     
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    };
+    // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)
+    const isFormData = options?.body instanceof FormData;
+    
+    const headers: HeadersInit = isFormData 
+      ? { ...options?.headers }
+      : {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        };
     
     if (token) {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
