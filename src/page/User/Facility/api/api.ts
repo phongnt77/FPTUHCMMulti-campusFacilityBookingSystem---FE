@@ -65,10 +65,6 @@ const mapFacilityType = (typeName: string): FacilityType => {
     'Sports Court': 'Sport Facility',
     'Sân thể thao': 'Sport Facility', // Backend returns Vietnamese name
     'Sport Facility': 'Sport Facility',
-    'Auditorium': 'Auditorium',
-    'Hội trường': 'Auditorium',
-    'Library': 'Library',
-    'Thư viện': 'Library',
   };
   return typeMap[typeName] || 'Classroom';
 };

@@ -81,8 +81,6 @@ const BookingPage = () => {
       'Meeting Room': 'Phòng họp',
       'Laboratory': 'Phòng Lab',
       'Sport Facility': 'Sân thể thao',
-      'Auditorium': 'Hội trường',
-      'Library': 'Thư viện',
       'meeting-room': 'Phòng họp',
       'lab-room': 'Phòng Lab',
       'sports-field': 'Sân thể thao',
