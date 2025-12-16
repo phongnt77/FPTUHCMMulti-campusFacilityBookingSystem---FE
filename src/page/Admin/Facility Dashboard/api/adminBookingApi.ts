@@ -40,6 +40,8 @@ export interface AdminBooking {
   bookingId: string;
   userId: string;
   userName: string;
+  userPhoneNumber?: string | null;
+  studentId?: string | null;
   facilityId: string;
   facilityName: string;
   startTime: string; // dd/MM/yyyy HH:mm:ss format

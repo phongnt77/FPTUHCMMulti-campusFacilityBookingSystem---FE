@@ -433,12 +433,12 @@ const FacilityPage = () => {
               return (
                 <div
                   key={facility.id}
-                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
+                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col"
                 >
                   {/* Type Indicator Bar */}
                   <div className={`h-1.5 ${colors.accent}`} />
                   
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     {/* Header */}
                     <div className="flex items-start gap-4 mb-4">
                       <div className={`flex-shrink-0 w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center`}>
@@ -500,10 +500,10 @@ const FacilityPage = () => {
                       </div>
                     )}
 
-                    {/* Action Button */}
+                    {/* Action Button - pushed to bottom with mt-auto */}
                     <Link
                       to={`/booking/${facility.id}`}
-                      className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r ${selectedCampusInfo?.gradient || 'from-orange-500 to-orange-600'} text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity`}
+                      className={`mt-auto w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r ${selectedCampusInfo?.gradient || 'from-orange-500 to-orange-600'} text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity`}
                     >
                       Đặt ngay
                       <ChevronRight className="w-4 h-4" />

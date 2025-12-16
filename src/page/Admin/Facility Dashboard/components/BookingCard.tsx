@@ -213,9 +213,29 @@ const BookingCard = ({ booking, onApprove, onReject }: BookingCardProps) => {
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
               {booking.userName.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{booking.userName}</p>
-              <p className="text-xs text-gray-500">User ID: {booking.userId}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-gray-900">{booking.userName}</p>
+                {!booking.studentId && (
+                  <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700">
+                    Lecturer
+                  </span>
+                )}
+              </div>
+              {booking.studentId ? (
+                <div className="flex flex-col gap-0.5 mt-1">
+                  <p className="text-xs text-gray-500">Student ID: {booking.studentId}</p>
+                  {booking.userPhoneNumber ? (
+                    <p className="text-xs text-gray-500">SĐT: {booking.userPhoneNumber}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic">Chưa cập nhật số điện thoại</p>
+                  )}
+                </div>
+              ) : (
+                booking.userPhoneNumber && (
+                  <p className="text-xs text-gray-500 mt-1">SĐT: {booking.userPhoneNumber}</p>
+                )
+              )}
             </div>
           </div>
 
