@@ -53,6 +53,11 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: string) => `/users/${id}`,
     GET_PROFILE: '/users/profile',
   },
+  
+  // System Settings
+  SYSTEM_SETTINGS: {
+    GET: '/system-settings',
+  },
 };
 
 // Helper function to build full URL

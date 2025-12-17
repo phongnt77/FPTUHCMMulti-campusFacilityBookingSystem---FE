@@ -31,6 +31,7 @@ export interface SystemSettings {
   checkInMinutesBeforeStart: number;
   checkInMinutesAfterStart: number;
   checkoutMinRatio: number;
+  checkOutMinutesAfterCheckIn: number;
 }
 
 // Interface cho API Response
@@ -49,6 +50,7 @@ export interface UpdateSystemSettingsRequest {
   checkInMinutesBeforeStart?: number;
   checkInMinutesAfterStart?: number;
   checkoutMinRatio?: number;
+  checkOutMinutesAfterCheckIn?: number;
 }
 
 /**

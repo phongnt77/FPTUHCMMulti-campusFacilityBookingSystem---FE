@@ -11,6 +11,7 @@ const SystemSetting = () => {
     checkInMinutesBeforeStart: 15,
     checkInMinutesAfterStart: 15,
     checkoutMinRatio: 0,
+    checkOutMinutesAfterCheckIn: 0,
   })
   
   const [loading, setLoading] = useState(true)
@@ -52,7 +53,8 @@ const SystemSetting = () => {
         settings.minimumBookingHoursBeforeStart !== originalSettings.minimumBookingHoursBeforeStart ||
         settings.checkInMinutesBeforeStart !== originalSettings.checkInMinutesBeforeStart ||
         settings.checkInMinutesAfterStart !== originalSettings.checkInMinutesAfterStart ||
-        settings.checkoutMinRatio !== originalSettings.checkoutMinRatio
+        settings.checkoutMinRatio !== originalSettings.checkoutMinRatio ||
+        settings.checkOutMinutesAfterCheckIn !== originalSettings.checkOutMinutesAfterCheckIn
       setHasChanges(changed)
     }
   }, [settings, originalSettings])
@@ -77,7 +79,8 @@ const SystemSetting = () => {
       settings.minimumBookingHoursBeforeStart < 0 ||
       settings.checkInMinutesBeforeStart < 0 ||
       settings.checkInMinutesAfterStart < 0 ||
-      settings.checkoutMinRatio < 0
+      settings.checkoutMinRatio < 0 ||
+      settings.checkOutMinutesAfterCheckIn < 0
     ) {
       showError('Tất cả các giá trị phải lớn hơn hoặc bằng 0')
       return
@@ -92,6 +95,7 @@ const SystemSetting = () => {
         checkInMinutesBeforeStart: settings.checkInMinutesBeforeStart,
         checkInMinutesAfterStart: settings.checkInMinutesAfterStart,
         checkoutMinRatio: settings.checkoutMinRatio,
+        checkOutMinutesAfterCheckIn: settings.checkOutMinutesAfterCheckIn,
       })
 
       if (response.success && response.data) {
@@ -238,6 +242,31 @@ const SystemSetting = () => {
                   step="1"
                   value={settings.checkInMinutesAfterStart}
                   onChange={(e) => handleChange('checkInMinutesAfterStart', parseInt(e.target.value) || 0)}
+                  className="w-32 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
+                />
+                <span className="text-sm text-gray-600">phút</span>
+              </div>
+            </div>
+
+            {/* Check-out Minutes After Check-in */}
+            <div>
+              <label
+                htmlFor="checkOutAfterCheckIn"
+                className="block text-sm font-semibold text-gray-900 mb-2"
+              >
+                Thời gian tối thiểu sau khi check-in để được check-out (phút)
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                Số phút tối thiểu sau khi check-in mà người dùng mới được phép check-out (mặc định: 0 - có thể check-out ngay sau khi check-in)
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="number"
+                  id="checkOutAfterCheckIn"
+                  min="0"
+                  step="1"
+                  value={settings.checkOutMinutesAfterCheckIn}
+                  onChange={(e) => handleChange('checkOutMinutesAfterCheckIn', parseInt(e.target.value) || 0)}
                   className="w-32 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
                 />
                 <span className="text-sm text-gray-600">phút</span>

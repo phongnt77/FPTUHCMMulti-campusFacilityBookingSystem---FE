@@ -3,6 +3,15 @@ import type { Facility, Campus, FacilityType } from '../../../../types';
 
 export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
 
+// System Settings types
+export interface SystemSettings {
+  minimumBookingHoursBeforeStart: number;
+  checkInMinutesBeforeStart: number;
+  checkInMinutesAfterStart: number;
+  checkoutMinRatio: number;
+  checkOutMinutesAfterCheckIn: number;
+}
+
 // Helper function to parse date string from backend
 // Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
 const parseDateString = (dateString: string | null | undefined): Date | null => {
@@ -227,6 +236,40 @@ const statusMatchesFilter = (backendStatus: string, filterStatus: BookingStatus)
 };
 
 export const myBookingsApi = {
+  // Get system settings (public endpoint)
+  getSystemSettings: async (): Promise<SystemSettings | null> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.SYSTEM_SETTINGS.GET}`;
+      console.log('Fetching system settings:', url);
+      
+      const response = await apiFetch<SystemSettings>(url);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      
+      console.error('Failed to fetch system settings:', response.error);
+      // Return default values if API fails
+      return {
+        minimumBookingHoursBeforeStart: 3,
+        checkInMinutesBeforeStart: 15,
+        checkInMinutesAfterStart: 15,
+        checkoutMinRatio: 50,
+        checkOutMinutesAfterCheckIn: 0,
+      };
+    } catch (error) {
+      console.error('Error fetching system settings:', error);
+      // Return default values if API fails
+      return {
+        minimumBookingHoursBeforeStart: 3,
+        checkInMinutesBeforeStart: 15,
+        checkInMinutesAfterStart: 15,
+        checkoutMinRatio: 50,
+        checkOutMinutesAfterCheckIn: 0,
+      };
+    }
+  },
+
   // Get all bookings for current user - API ONLY
   getMyBookings: async (status?: BookingStatus): Promise<UserBooking[]> => {
     try {

@@ -26,6 +26,15 @@ export interface BookingResponse {
   message: string;
 }
 
+// System Settings types
+export interface SystemSettings {
+  minimumBookingHoursBeforeStart: number;
+  checkInMinutesBeforeStart: number;
+  checkInMinutesAfterStart: number;
+  checkoutMinRatio: number;
+  checkOutMinutesAfterCheckIn: number;
+}
+
 // Backend response types
 interface FacilityResponse {
   facilityId: string;
@@ -82,7 +91,7 @@ const mapFacilityType = (typeName: string): FacilityType => {
 };
 
 // Generate time slots for a facility
-const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[] => {
+const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBookingHours: number = 3): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   
   // Parse the date string (format: YYYY-MM-DD)
@@ -127,11 +136,11 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
       }
     }
     
-    // Check if slot is within 3 hours (must book at least 3 hours in advance)
-    // Example: If current time is 7:36, slot 10:00 is disabled (10:00 - 7:36 = 2.4 hours < 3 hours)
-    // Example: If current time is 7:36, slot 11:00 is available (11:00 - 7:36 = 3.4 hours >= 3 hours)
+    // Check if slot is within minimum booking hours (must book at least X hours in advance)
+    // Example: If minimumBookingHours = 3, current time is 7:36, slot 10:00 is disabled (10:00 - 7:36 = 2.4 hours < 3 hours)
+    // Example: If minimumBookingHours = 3, current time is 7:36, slot 11:00 is available (11:00 - 7:36 = 3.4 hours >= 3 hours)
     // Only check for future slots (hoursUntilSlot > 0)
-    const isWithin3Hours = hoursUntilSlot > 0 && hoursUntilSlot < 3;
+    const isWithinMinimumHours = hoursUntilSlot > 0 && hoursUntilSlot < minimumBookingHours;
     
     const isBooked = bookedSlots.includes(`${hour.toString().padStart(2, '0')}:00`);
     
@@ -139,7 +148,7 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
       id: `slot-${hour}`,
       startTime: `${hour.toString().padStart(2, '0')}:00`,
       endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
-      isAvailable: !isPastSlot && !isWithin3Hours && !isBooked,
+      isAvailable: !isPastSlot && !isWithinMinimumHours && !isBooked,
     });
   }
   
@@ -147,6 +156,40 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = []): TimeSlot[]
 };
 
 export const bookingApi = {
+  // Get system settings (public endpoint)
+  getSystemSettings: async (): Promise<SystemSettings | null> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.SYSTEM_SETTINGS.GET}`;
+      console.log('Fetching system settings:', url);
+      
+      const response = await apiFetch<SystemSettings>(url);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      
+      console.error('Failed to fetch system settings:', response.error);
+      // Return default values if API fails
+      return {
+        minimumBookingHoursBeforeStart: 3,
+        checkInMinutesBeforeStart: 15,
+        checkInMinutesAfterStart: 15,
+        checkoutMinRatio: 50,
+        checkOutMinutesAfterCheckIn: 0,
+      };
+    } catch (error) {
+      console.error('Error fetching system settings:', error);
+      // Return default values if API fails
+      return {
+        minimumBookingHoursBeforeStart: 3,
+        checkInMinutesBeforeStart: 15,
+        checkInMinutesAfterStart: 15,
+        checkoutMinRatio: 50,
+        checkOutMinutesAfterCheckIn: 0,
+      };
+    }
+  },
+
   // Get facility details by ID - API ONLY
   getFacilityById: async (id: string): Promise<Facility | null> => {
     try {
@@ -168,8 +211,15 @@ export const bookingApi = {
   },
 
   // Get available time slots for a facility on a specific date - API ONLY
-  getAvailableTimeSlots: async (facilityId: string, date: string): Promise<TimeSlot[]> => {
+  getAvailableTimeSlots: async (facilityId: string, date: string, minimumBookingHours?: number): Promise<TimeSlot[]> => {
     try {
+      // Fetch system settings if minimumBookingHours is not provided
+      let minHours = minimumBookingHours;
+      if (minHours === undefined) {
+        const settings = await bookingApi.getSystemSettings();
+        minHours = settings?.minimumBookingHoursBeforeStart || 3;
+      }
+      
       // Get existing bookings for this facility
       const url = buildUrl(API_ENDPOINTS.BOOKING.GET_ALL, {
         facilityId,
@@ -218,11 +268,12 @@ export const bookingApi = {
         });
       }
       
-      return generateTimeSlots(date, bookedSlots);
+      return generateTimeSlots(date, bookedSlots, minHours);
     } catch (error) {
       console.error('Error fetching time slots:', error);
-      // Return slots with no bookings if API fails
-      return generateTimeSlots(date, []);
+      // Return slots with no bookings if API fails, use default minimum hours
+      const defaultMinHours = minimumBookingHours || 3;
+      return generateTimeSlots(date, [], defaultMinHours);
     }
   },
 

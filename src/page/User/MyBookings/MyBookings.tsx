@@ -52,6 +52,17 @@ const MyBookingsPage = () => {
   // Auto-refresh để cập nhật trạng thái check-in/check-out theo thời gian thực
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // System Settings State
+  const [systemSettings, setSystemSettings] = useState<{
+    checkInMinutesBeforeStart: number;
+    checkInMinutesAfterStart: number;
+    checkOutMinutesAfterCheckIn: number;
+  }>({
+    checkInMinutesBeforeStart: 15,
+    checkInMinutesAfterStart: 15,
+    checkOutMinutesAfterCheckIn: 0,
+  });
+
   useEffect(() => {
     // Update thời gian mỗi 30 giây
     const interval = setInterval(() => {
@@ -59,6 +70,32 @@ const MyBookingsPage = () => {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
+  }, []);
+
+  // Load system settings on mount
+  useEffect(() => {
+    const loadSystemSettings = async () => {
+      try {
+        const settings = await myBookingsApi.getSystemSettings();
+        if (settings) {
+          setSystemSettings({
+            checkInMinutesBeforeStart: settings.checkInMinutesBeforeStart,
+            checkInMinutesAfterStart: settings.checkInMinutesAfterStart,
+            checkOutMinutesAfterCheckIn: settings.checkOutMinutesAfterCheckIn,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading system settings:', error);
+        // Use default values if fetch fails
+        setSystemSettings({
+          checkInMinutesBeforeStart: 15,
+          checkInMinutesAfterStart: 15,
+          checkOutMinutesAfterCheckIn: 0,
+        });
+      }
+    };
+
+    loadSystemSettings();
   }, []);
 
   // Confirm Modal State
@@ -425,11 +462,8 @@ const MyBookingsPage = () => {
   };
 
   // Helper function to check if check-in is available
-  // Check-in: từ 15 phút trước StartTime đến 15 phút sau StartTime
-  // Ví dụ: đặt 9-10h thì check-in từ 8h45-9h15
-  const CHECK_IN_MINUTES_BEFORE = 15;
-  const CHECK_IN_MINUTES_AFTER = 15;
-  
+  // Check-in: từ X phút trước StartTime đến Y phút sau StartTime (lấy từ system settings)
+  // Ví dụ: nếu settings là 15 phút trước và 15 phút sau, đặt 9-10h thì check-in từ 8h45-9h15
   const getCheckInStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
     // Basic checks
     if (booking.status !== 'Approved') return { canShow: false, isEnabled: false };
@@ -463,8 +497,8 @@ const MyBookingsPage = () => {
       }
       
       const now = getCurrentTime();
-      const allowedCheckInStart = new Date(startTime.getTime() - CHECK_IN_MINUTES_BEFORE * 60 * 1000);
-      const allowedCheckInEnd = new Date(startTime.getTime() + CHECK_IN_MINUTES_AFTER * 60 * 1000);
+      const allowedCheckInStart = new Date(startTime.getTime() - systemSettings.checkInMinutesBeforeStart * 60 * 1000);
+      const allowedCheckInEnd = new Date(startTime.getTime() + systemSettings.checkInMinutesAfterStart * 60 * 1000);
       
       // Check if within check-in window
       if (now < allowedCheckInStart) {
@@ -496,13 +530,41 @@ const MyBookingsPage = () => {
   };
 
   // Helper function to check if check-out is available
-  // Check-out: Bất kỳ lúc nào sau khi đã check-in
+  // Check-out: Sau khi đã check-in và đã đủ thời gian tối thiểu (nếu có setting)
   const getCheckOutStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
     if (booking.status !== 'Approved' && booking.status !== 'Finish') return { canShow: false, isEnabled: false };
     if (!booking.checkInTime) return { canShow: false, isEnabled: false }; // Not checked in yet
     if (booking.checkOutTime) return { canShow: false, isEnabled: false }; // Already checked out
     
-    // Sau khi đã check-in, có thể check-out bất cứ lúc nào
+    // Kiểm tra thời gian tối thiểu sau khi check-in
+    if (systemSettings.checkOutMinutesAfterCheckIn > 0) {
+      try {
+        const checkInTime = parseDateString(booking.checkInTime);
+        if (checkInTime) {
+          const now = getCurrentTime();
+          const minCheckOutTime = new Date(checkInTime.getTime() + systemSettings.checkOutMinutesAfterCheckIn * 60 * 1000);
+          
+          if (now < minCheckOutTime) {
+            const diffMs = minCheckOutTime.getTime() - now.getTime();
+            const diffMins = Math.ceil(diffMs / 60000);
+            const hours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+            const timeStr = hours > 0 ? `${hours}h ${mins}p` : `${mins} phút`;
+            return {
+              canShow: true,
+              isEnabled: false,
+              disabledReason: `Có thể check-out sau ${timeStr} (từ ${minCheckOutTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})`
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Error checking check-out availability:', error);
+        // Nếu có lỗi, cho phép check-out (backend sẽ validate)
+        return { canShow: true, isEnabled: true };
+      }
+    }
+    
+    // Nếu không có setting hoặc đã đủ thời gian, có thể check-out
     return { canShow: true, isEnabled: true };
   };
 

@@ -3,11 +3,12 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   MapPin, Users, Clock, Calendar, ChevronLeft, ChevronRight, 
   Building2, FlaskConical, Trophy, Check, X, AlertCircle,
-  FileText, UserCheck, Loader2, CheckCircle2, Info
+  FileText, UserCheck, Loader2, CheckCircle2, Info, Phone
 } from 'lucide-react';
 import type { Facility, FacilityType } from '../../../types';
 import { bookingApi, type TimeSlot, type BookingRequest } from './api/api';
 import { useAuthState } from '../../../hooks/useAuthState';
+import { getProfile, updateProfile } from '../Profile/api/profileApi';
 
 const BookingPage = () => {
   const { facilityId } = useParams<{ facilityId: string }>();
@@ -28,12 +29,54 @@ const BookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingId, setBookingId] = useState('');
+  const [minimumBookingHours, setMinimumBookingHours] = useState<number | undefined>(undefined);
+  const [userPhoneNumber, setUserPhoneNumber] = useState<string | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [updatingPhone, setUpdatingPhone] = useState(false);
 
   // Initialize with today's date
   useEffect(() => {
     const today = new Date();
     setSelectedDate(today.toISOString().split('T')[0]);
   }, []);
+
+  // Load system settings once on mount
+  useEffect(() => {
+    const loadSystemSettings = async () => {
+      try {
+        const settings = await bookingApi.getSystemSettings();
+        if (settings) {
+          setMinimumBookingHours(settings.minimumBookingHoursBeforeStart);
+        }
+      } catch (error) {
+        console.error('Error loading system settings:', error);
+        // Use default value if fetch fails
+        setMinimumBookingHours(3);
+      }
+    };
+
+    loadSystemSettings();
+  }, []);
+
+  // Load user profile to check phone number
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await getProfile();
+        if (response.success && response.data) {
+          setUserPhoneNumber(response.data.phoneNumber);
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
 
   // Load facility details
   useEffect(() => {
@@ -61,14 +104,14 @@ const BookingPage = () => {
     setLoadingSlots(true);
     setSelectedSlot(null);
     try {
-      const slots = await bookingApi.getAvailableTimeSlots(facilityId, selectedDate);
+      const slots = await bookingApi.getAvailableTimeSlots(facilityId, selectedDate, minimumBookingHours);
       setTimeSlots(slots);
     } catch (error) {
       console.error('Error loading time slots:', error);
     } finally {
       setLoadingSlots(false);
     }
-  }, [facilityId, selectedDate]);
+  }, [facilityId, selectedDate, minimumBookingHours]);
 
   useEffect(() => {
     loadTimeSlots();
@@ -184,10 +227,79 @@ const BookingPage = () => {
   
   const canSubmit = selectedSlot && purpose.trim() && (isSportsField || numberOfPeople > 0);
 
-  const handleOpenConfirmModal = () => {
-    if (canSubmit) {
-      setShowConfirmModal(true);
+  // Validate phone number format
+  const validatePhoneNumber = (phone: string): string | null => {
+    if (!phone || phone.trim() === '') {
+      return 'Vui lòng nhập số điện thoại';
     }
+    
+    // Chỉ cho phép số
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Kiểm tra format: bắt đầu bằng 0 và có đúng 10 chữ số
+    if (digitsOnly.length !== 10) {
+      return 'Số điện thoại phải có đúng 10 chữ số';
+    }
+    
+    if (!digitsOnly.startsWith('0')) {
+      return 'Số điện thoại phải bắt đầu bằng số 0';
+    }
+    
+    return null;
+  };
+
+  const handleOpenConfirmModal = () => {
+    if (!canSubmit) return;
+
+    // Kiểm tra nếu user là Student và chưa có số điện thoại
+    if (user?.role === 'Student' && (!userPhoneNumber || userPhoneNumber.trim() === '')) {
+      setShowPhoneModal(true);
+      setPhoneInput('');
+      setPhoneError(null);
+      return;
+    }
+
+    // Nếu đã có số điện thoại hoặc không phải Student, cho phép đặt phòng
+    setShowConfirmModal(true);
+  };
+
+  const handleUpdatePhone = async () => {
+    // Validate phone number
+    const error = validatePhoneNumber(phoneInput);
+    if (error) {
+      setPhoneError(error);
+      return;
+    }
+
+    setUpdatingPhone(true);
+    setPhoneError(null);
+
+    try {
+      // Normalize phone number (chỉ giữ số)
+      const normalizedPhone = phoneInput.replace(/\D/g, '');
+      
+      const response = await updateProfile({ phoneNumber: normalizedPhone });
+      
+      if (response.success && response.data) {
+        setUserPhoneNumber(response.data.phoneNumber);
+        setShowPhoneModal(false);
+        setPhoneInput('');
+        // Sau khi cập nhật thành công, mở confirm modal
+        setShowConfirmModal(true);
+      } else {
+        setPhoneError(response.error?.message || 'Có lỗi xảy ra khi cập nhật số điện thoại');
+      }
+    } catch (error: any) {
+      console.error('Error updating phone:', error);
+      setPhoneError(error.message || 'Có lỗi xảy ra khi cập nhật số điện thoại');
+    } finally {
+      setUpdatingPhone(false);
+    }
+  };
+
+  const handleGoToProfile = () => {
+    setShowPhoneModal(false);
+    navigate('/profile');
   };
 
   const handleSubmitBooking = async () => {
@@ -456,7 +568,7 @@ const BookingPage = () => {
                     </button>
                   </div>
 
-                  {/* Calendar Grid - Show 14 days */}
+                  {/* Calendar Grid - Show 1 week (7 days) */}
                   <div className="grid grid-cols-7 gap-2 mb-3">
                     {/* Day headers */}
                     {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
@@ -465,40 +577,64 @@ const BookingPage = () => {
                       </div>
                     ))}
                     
-                    {/* Date buttons - Show next 14 days */}
-                    {Array.from({ length: 14 }, (_, i) => {
-                      const date = new Date();
-                      date.setDate(date.getDate() + i);
-                      const dateStr = date.toISOString().split('T')[0];
-                      const isSelected = dateStr === selectedDate;
-                      const isToday = i === 0;
-                      const dayOfWeek = date.getDay();
-                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    {/* Date buttons - Show 1 week (7 days) starting from Sunday */}
+                    {(() => {
+                      const today = new Date();
+                      const selected = new Date(selectedDate);
                       
-                      return (
-                        <button
-                          key={dateStr}
-                          onClick={() => setSelectedDate(dateStr)}
-                          className={`relative p-2 rounded-lg text-center transition-all ${
-                            isSelected
-                              ? `bg-gradient-to-r ${colors.gradient} text-white shadow-md`
-                              : isToday
-                              ? 'bg-orange-50 text-orange-700 border-2 border-orange-300 hover:bg-orange-100'
-                              : isWeekend
-                              ? 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
-                              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                          }`}
-                        >
-                          <div className="text-lg font-semibold">{date.getDate()}</div>
-                          <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
-                            {date.toLocaleDateString('vi-VN', { weekday: 'short' })}
-                          </div>
-                          {isToday && !isSelected && (
-                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full" />
-                          )}
-                        </button>
-                      );
-                    })}
+                      // Find the Sunday of the week containing selectedDate
+                      const sunday = new Date(selected);
+                      const dayOfWeek = sunday.getDay(); // 0 = Sunday, 1 = Monday, ...
+                      sunday.setDate(selected.getDate() - dayOfWeek);
+                      
+                      // Create array of 7 dates starting from Sunday
+                      const dates = Array.from({ length: 7 }, (_, i) => {
+                        const date = new Date(sunday);
+                        date.setDate(sunday.getDate() + i);
+                        return date;
+                      });
+                      
+                      return dates.map((date) => {
+                        const dateStr = date.toISOString().split('T')[0];
+                        const isSelected = dateStr === selectedDate;
+                        const isToday = dateStr === today.toISOString().split('T')[0];
+                        const dayOfWeek = date.getDay();
+                        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        
+                        // Check if date is within allowed range
+                        const dateTime = date.getTime();
+                        const minDate = new Date(getMinDate()).getTime();
+                        const maxDate = new Date(getMaxDate()).getTime();
+                        const isDisabled = dateTime < minDate || dateTime > maxDate;
+                        
+                        return (
+                          <button
+                            key={dateStr}
+                            onClick={() => !isDisabled && setSelectedDate(dateStr)}
+                            disabled={isDisabled}
+                            className={`relative p-2 rounded-lg text-center transition-all ${
+                              isDisabled
+                                ? 'bg-gray-100 text-gray-300 cursor-not-allowed border border-gray-200'
+                                : isSelected
+                                ? `bg-gradient-to-r ${colors.gradient} text-white shadow-md`
+                                : isToday
+                                ? 'bg-orange-50 text-orange-700 border-2 border-orange-300 hover:bg-orange-100'
+                                : isWeekend
+                                ? 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                            }`}
+                          >
+                            <div className="text-lg font-semibold">{date.getDate()}</div>
+                            <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
+                              {date.toLocaleDateString('vi-VN', { weekday: 'short' })}
+                            </div>
+                            {isToday && !isSelected && !isDisabled && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full" />
+                            )}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   {/* Selected date display */}
@@ -655,6 +791,115 @@ const BookingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Phone Number Required Modal */}
+      {showPhoneModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div 
+              className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+              onClick={() => !updatingPhone && setShowPhoneModal(false)}
+            />
+            
+            <div className="relative inline-block w-full max-w-md my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-2xl shadow-xl">
+              {/* Modal Header */}
+              <div className="px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-600">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Phone className="w-5 h-5" />
+                    Cập nhật số điện thoại
+                  </h3>
+                  {!updatingPhone && (
+                    <button
+                      onClick={() => setShowPhoneModal(false)}
+                      className="text-white/80 hover:text-white transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="px-6 py-5">
+                <div className="space-y-4">
+                  {/* Warning Message */}
+                  <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        Số điện thoại là bắt buộc
+                      </p>
+                      <p className="text-sm text-amber-800">
+                        Bạn cần cập nhật số điện thoại để có thể đặt phòng. Số điện thoại sẽ được sử dụng để liên hệ khi cần thiết.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Phone Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Số điện thoại <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={phoneInput}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, ''); // Chỉ cho phép số
+                        if (value.length <= 10) {
+                          setPhoneInput(value);
+                          setPhoneError(null);
+                        }
+                      }}
+                      placeholder="Nhập số điện thoại (VD: 0912345678)"
+                      disabled={updatingPhone}
+                      className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                        phoneError
+                          ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500'
+                          : 'border-gray-200 focus:ring-orange-500/20 focus:border-orange-500'
+                      } disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                    />
+                    {phoneError && (
+                      <p className="mt-1 text-sm text-red-600">{phoneError}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Số điện thoại phải có 10 chữ số và bắt đầu bằng số 0
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 flex gap-3">
+                <button
+                  onClick={handleGoToProfile}
+                  disabled={updatingPhone}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  Đến trang Hồ sơ
+                </button>
+                <button
+                  onClick={handleUpdatePhone}
+                  disabled={updatingPhone || !phoneInput.trim()}
+                  className="flex-1 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {updatingPhone ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Đang cập nhật...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      Cập nhật
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
