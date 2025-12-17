@@ -91,7 +91,8 @@ const mapFacilityType = (typeName: string): FacilityType => {
 };
 
 // Generate time slots for a facility
-const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBookingHours: number = 3): TimeSlot[] => {
+// minimumBookingHours must be provided (from system settings)
+const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBookingHours: number): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   
   // Parse the date string (format: YYYY-MM-DD)
@@ -169,24 +170,12 @@ export const bookingApi = {
       }
       
       console.error('Failed to fetch system settings:', response.error);
-      // Return default values if API fails
-      return {
-        minimumBookingHoursBeforeStart: 3,
-        checkInMinutesBeforeStart: 15,
-        checkInMinutesAfterStart: 15,
-        checkoutMinRatio: 50,
-        checkOutMinutesAfterCheckIn: 0,
-      };
+      // Return null if API fails - let caller handle the error
+      return null;
     } catch (error) {
       console.error('Error fetching system settings:', error);
-      // Return default values if API fails
-      return {
-        minimumBookingHoursBeforeStart: 3,
-        checkInMinutesBeforeStart: 15,
-        checkInMinutesAfterStart: 15,
-        checkoutMinRatio: 50,
-        checkOutMinutesAfterCheckIn: 0,
-      };
+      // Return null if API fails - let caller handle the error
+      return null;
     }
   },
 
@@ -211,15 +200,9 @@ export const bookingApi = {
   },
 
   // Get available time slots for a facility on a specific date - API ONLY
-  getAvailableTimeSlots: async (facilityId: string, date: string, minimumBookingHours?: number): Promise<TimeSlot[]> => {
+  // minimumBookingHours must be provided (from system settings)
+  getAvailableTimeSlots: async (facilityId: string, date: string, minimumBookingHours: number): Promise<TimeSlot[]> => {
     try {
-      // Fetch system settings if minimumBookingHours is not provided
-      let minHours = minimumBookingHours;
-      if (minHours === undefined) {
-        const settings = await bookingApi.getSystemSettings();
-        minHours = settings?.minimumBookingHoursBeforeStart || 3;
-      }
-      
       // Get existing bookings for this facility
       const url = buildUrl(API_ENDPOINTS.BOOKING.GET_ALL, {
         facilityId,
@@ -268,12 +251,11 @@ export const bookingApi = {
         });
       }
       
-      return generateTimeSlots(date, bookedSlots, minHours);
+      return generateTimeSlots(date, bookedSlots, minimumBookingHours);
     } catch (error) {
       console.error('Error fetching time slots:', error);
-      // Return slots with no bookings if API fails, use default minimum hours
-      const defaultMinHours = minimumBookingHours || 3;
-      return generateTimeSlots(date, [], defaultMinHours);
+      // Return empty slots if API fails - caller should handle the error
+      throw error;
     }
   },
 

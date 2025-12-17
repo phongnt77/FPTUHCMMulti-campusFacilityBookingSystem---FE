@@ -49,11 +49,15 @@ const BookingPage = () => {
         const settings = await bookingApi.getSystemSettings();
         if (settings) {
           setMinimumBookingHours(settings.minimumBookingHoursBeforeStart);
+        } else {
+          console.error('Failed to load system settings - booking may not work correctly');
+          // Don't set a default - let the user see an error or disable booking
+          setMinimumBookingHours(undefined);
         }
       } catch (error) {
         console.error('Error loading system settings:', error);
-        // Use default value if fetch fails
-        setMinimumBookingHours(3);
+        // Don't set a default - let the user see an error or disable booking
+        setMinimumBookingHours(undefined);
       }
     };
 
@@ -101,6 +105,12 @@ const BookingPage = () => {
   const loadTimeSlots = useCallback(async () => {
     if (!facilityId || !selectedDate) return;
     
+    // Don't load time slots if system settings haven't been loaded yet
+    if (minimumBookingHours === undefined) {
+      setTimeSlots([]);
+      return;
+    }
+    
     setLoadingSlots(true);
     setSelectedSlot(null);
     try {
@@ -108,6 +118,7 @@ const BookingPage = () => {
       setTimeSlots(slots);
     } catch (error) {
       console.error('Error loading time slots:', error);
+      setTimeSlots([]);
     } finally {
       setLoadingSlots(false);
     }
@@ -673,7 +684,21 @@ const BookingPage = () => {
                     Chọn khung giờ
                   </label>
                   
-                  {loadingSlots ? (
+                  {minimumBookingHours === undefined ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-900 mb-1">
+                            Không thể tải cài đặt hệ thống
+                          </p>
+                          <p className="text-sm text-yellow-700">
+                            Vui lòng làm mới trang hoặc liên hệ quản trị viên nếu vấn đề vẫn tiếp tục.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : loadingSlots ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
                       <span className="ml-2 text-gray-600">Đang tải lịch...</span>
