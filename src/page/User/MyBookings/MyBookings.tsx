@@ -608,7 +608,7 @@ const MyBookingsPage = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
           {[
-            { label: 'Tổng đơn', value: stats.total, color: 'bg-gray-100 text-gray-700' },
+            { label: 'Tổng lượt đặt', value: stats.total, color: 'bg-gray-100 text-gray-700' },
             { label: 'Chờ duyệt', value: stats.pending, color: 'bg-yellow-100 text-yellow-700' },
             { label: 'Đã duyệt', value: stats.approved, color: 'bg-blue-100 text-blue-700' },
             { label: 'Đã hoàn thành', value: stats.finish, color: 'bg-green-100 text-green-700' },
