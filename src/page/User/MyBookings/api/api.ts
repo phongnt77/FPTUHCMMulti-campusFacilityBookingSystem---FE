@@ -3,54 +3,6 @@ import type { Facility, Campus, FacilityType } from '../../../../types';
 
 export type BookingStatus = 'Pending' | 'Approved' | 'Rejected' | 'Finish' | 'Cancelled';
 
-// System Settings types
-export interface SystemSettings {
-  minimumBookingHoursBeforeStart: number;
-  checkInMinutesBeforeStart: number;
-  checkInMinutesAfterStart: number;
-  checkoutMinRatio: number;
-  checkOutMinutesAfterCheckIn: number;
-}
-
-// Helper function to parse date string from backend
-// Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
-const parseDateString = (dateString: string | null | undefined): Date | null => {
-  if (!dateString) return null;
-  
-  try {
-    // Try parsing "dd/MM/yyyy HH:mm:ss" format
-    const ddMMyyyyWithTimeMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
-    if (ddMMyyyyWithTimeMatch) {
-      const [, day, month, year, hours, minutes, seconds] = ddMMyyyyWithTimeMatch;
-      return new Date(
-        parseInt(year),
-        parseInt(month) - 1,
-        parseInt(day),
-        parseInt(hours),
-        parseInt(minutes),
-        parseInt(seconds)
-      );
-    }
-    
-    // Try parsing "dd/MM/yyyy" format (date only)
-    const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (ddMMyyyyMatch) {
-      const [, day, month, year] = ddMMyyyyMatch;
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    }
-    
-    // Fallback: try standard Date parsing (for ISO 8601 format)
-    const date = new Date(dateString);
-    if (!isNaN(date.getTime())) {
-      return date;
-    }
-    
-    return null;
-  } catch {
-    return null;
-  }
-};
-
 export interface Feedback {
   id: string;
   rating: number;
@@ -67,16 +19,15 @@ export interface UserBooking {
   date: string;
   startTime: string;
   endTime: string;
-  startDateTime?: string; // Full ISO datetime from backend
-  endDateTime?: string; // Full ISO datetime from backend
+  startDateTime?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   purpose: string;
   numberOfPeople: number;
   status: BookingStatus;
   createdAt: string;
   feedback?: Feedback;
   rejectionReason?: string;
-  checkInTime?: string;
-  checkOutTime?: string;
 }
 
 // Backend response types
@@ -94,14 +45,14 @@ interface BackendBookingResponse {
   userName?: string;
   startTime: string;
   endTime: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   purpose: string;
   status: string;
   estimatedAttendees: number;
   specialRequirements?: string;
   createdAt: string;
   rejectionReason?: string;
-  checkInTime?: string;
-  checkOutTime?: string;
 }
 
 interface BackendFeedbackResponse {
@@ -140,44 +91,23 @@ const mapFacilityType = (typeName: string): FacilityType => {
     'Meeting Room': 'Meeting Room',
     'Computer Lab': 'Laboratory',
     'Sports Court': 'Sport Facility',
+    'Auditorium': 'Auditorium',
     'Laboratory': 'Laboratory',
     'Sport Facility': 'Sport Facility',
+    'Library': 'Library',
   };
   return typeMap[typeName] || 'Classroom';
 };
 
 // Map backend booking to frontend UserBooking
 const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbackResponse): UserBooking => {
-  const startDate = parseDateString(b.startTime);
-  const endDate = parseDateString(b.endTime);
-  
-  // Format time as HH:mm
-  const formatTime = (date: Date | null): string => {
-    if (!date) return 'N/A';
-    try {
-      return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } catch {
-      return 'N/A';
-    }
-  };
-  
-  // Format date as yyyy-MM-dd for date field
-  const formatDateISO = (date: Date | null): string => {
-    if (!date) return '';
-    try {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch {
-      return '';
-    }
-  };
+  const startDate = new Date(b.startTime);
+  const endDate = new Date(b.endTime);
   
   return {
     id: b.bookingId,
     lessonBookingId: b.bookingId,
-    lessonBookingDate: formatDateISO(startDate),
+    lessonBookingDate: b.startTime.split('T')[0],
     facilityId: b.facilityId,
     facility: {
       id: b.facilityId,
@@ -185,29 +115,23 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
       campus: (b.campusName?.includes('NVH') || b.campusName?.includes('Nhà Văn Hóa') || b.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
       type: mapFacilityType(b.typeName || 'Classroom'),
       capacity: b.facilityCapacity || 0,
-      location: (() => {
-        const parts: string[] = [];
-        if (b.facilityRoomNumber) parts.push(b.facilityRoomNumber);
-        if (b.facilityFloorNumber) parts.push(`Tầng ${b.facilityFloorNumber}`);
-        return parts.length > 0 ? parts.join(', ') : 'Chưa có thông tin';
-      })(),
+      location: `${b.facilityRoomNumber || ''}, Tầng ${b.facilityFloorNumber || ''}`,
       amenities: [],
       imageUrl: '/images/default-facility.jpg',
       isActive: true,
       description: b.facilityDescription || '',
     },
-    date: formatDateISO(startDate),
-    startTime: formatTime(startDate),
-    endTime: formatTime(endDate),
-    startDateTime: b.startTime, // Keep original for time comparison
-    endDateTime: b.endTime, // Keep original for time comparison
+    date: b.startTime.split('T')[0],
+    startTime: startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    endTime: endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    startDateTime: b.startTime,
+    checkInTime: b.checkInTime,
+    checkOutTime: b.checkOutTime,
     purpose: b.purpose,
     numberOfPeople: b.estimatedAttendees,
     status: mapStatus(b.status),
     createdAt: b.createdAt,
     rejectionReason: b.rejectionReason,
-    checkInTime: b.checkInTime,
-    checkOutTime: b.checkOutTime,
     feedback: feedback ? {
       id: feedback.feedbackId,
       rating: feedback.rating,
@@ -235,36 +159,40 @@ const statusMatchesFilter = (backendStatus: string, filterStatus: BookingStatus)
   }
 };
 
+// System Settings types
+export interface SystemSettings {
+  checkInMinutesBeforeStart: number;
+  checkInMinutesAfterStart: number;
+  checkOutMinutesAfterCheckIn: number;
+}
+
 export const myBookingsApi = {
-  // Get system settings (public endpoint)
+  // Get system settings
   getSystemSettings: async (): Promise<SystemSettings | null> => {
     try {
       const url = `${API_BASE_URL}${API_ENDPOINTS.SYSTEM_SETTINGS.GET}`;
-      console.log('Fetching system settings:', url);
-      
-      const response = await apiFetch<SystemSettings>(url);
+      const response = await apiFetch<SystemSettings & { minimumBookingHoursBeforeStart?: number; checkoutMinRatio?: number }>(url);
       
       if (response.success && response.data) {
-        return response.data;
+        return {
+          checkInMinutesBeforeStart: response.data.checkInMinutesBeforeStart || 15,
+          checkInMinutesAfterStart: response.data.checkInMinutesAfterStart || 15,
+          checkOutMinutesAfterCheckIn: response.data.checkOutMinutesAfterCheckIn || 0,
+        };
       }
       
-      console.error('Failed to fetch system settings:', response.error);
       // Return default values if API fails
       return {
-        minimumBookingHoursBeforeStart: 3,
         checkInMinutesBeforeStart: 15,
         checkInMinutesAfterStart: 15,
-        checkoutMinRatio: 50,
         checkOutMinutesAfterCheckIn: 0,
       };
     } catch (error) {
       console.error('Error fetching system settings:', error);
       // Return default values if API fails
       return {
-        minimumBookingHoursBeforeStart: 3,
         checkInMinutesBeforeStart: 15,
         checkInMinutesAfterStart: 15,
-        checkoutMinRatio: 50,
         checkOutMinutesAfterCheckIn: 0,
       };
     }
@@ -283,34 +211,63 @@ export const myBookingsApi = {
       console.log('Fetching my bookings from:', url);
       
       const response = await apiFetch<BackendBookingResponse[]>(url);
-      console.log('My bookings response:', response);
+      console.log('My bookings full response:', response);
       
-      if (response.success && response.data) {
-        // Get all feedbacks for these bookings
-        const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { limit: 100 });
-        const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
-        const feedbacks = feedbackResponse.success && feedbackResponse.data ? feedbackResponse.data : [];
-        
-        // Filter by status first (using original backend status), then map
-        let filteredData = response.data;
-        if (status) {
-          filteredData = response.data.filter(b => statusMatchesFilter(b.status, status));
-        }
-        
-        // Map bookings with their feedbacks
-        const bookings = filteredData.map(booking => {
-          const feedback = feedbacks.find(f => f.bookingId === booking.bookingId);
-          return mapBookingResponse(booking, feedback);
-        });
-        
-        // Sort by date descending
-        bookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
-        return bookings;
+      if (!response.success) {
+        console.error('API Error:', response.error);
+        return [];
       }
       
-      console.error('API Error:', response.error);
-      return [];
+      // Ensure data is an array - it should be BackendBookingResponse[]
+      // Sometimes the API might wrap it differently
+      let bookingData: BackendBookingResponse[] = [];
+      
+      if (Array.isArray(response.data)) {
+        bookingData = response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // If data is an object (not array), check if it has a data property
+        const dataObj = response.data as any;
+        if (Array.isArray(dataObj.data)) {
+          bookingData = dataObj.data;
+        } else {
+          console.warn('Unexpected data structure:', response.data);
+        }
+      }
+      
+      console.log('Extracted bookings data:', bookingData, 'Length:', bookingData.length);
+      
+      if (bookingData.length === 0) {
+        console.log('No bookings found for current user');
+        return [];
+      }
+      
+      // Get all feedbacks for these bookings
+      const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { limit: 100 });
+      const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
+      const feedbacks = feedbackResponse.success && feedbackResponse.data 
+        ? Array.isArray(feedbackResponse.data) ? feedbackResponse.data : [] 
+        : [];
+      
+      console.log('Fetched feedbacks:', feedbacks.length);
+      
+      // Filter by status first (using original backend status), then map
+      let filteredData = bookingData;
+      if (status) {
+        filteredData = bookingData.filter(b => statusMatchesFilter(b.status, status));
+        console.log('Filtered bookings by status:', status, 'Count:', filteredData.length);
+      }
+      
+      // Map bookings with their feedbacks
+      const bookings = filteredData.map(booking => {
+        const feedback = feedbacks.find(f => f.bookingId === booking.bookingId);
+        return mapBookingResponse(booking, feedback);
+      });
+      
+      // Sort by date descending
+      bookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      console.log('Final mapped bookings:', bookings.length);
+      return bookings;
     } catch (error) {
       console.error('Error fetching bookings:', error);
       return [];
@@ -378,7 +335,10 @@ export const myBookingsApi = {
   // Cancel a pending/approved booking - API ONLY
   cancelBooking: async (id: string): Promise<{ success: boolean; message: string }> => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CANCEL(id)}`;
+      // Backend Controller expects reason parameter in query string
+      // Format: DELETE /api/bookings/{id}?reason={reason}
+      const reason = 'Hủy bởi người dùng';
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CANCEL(id)}?reason=${encodeURIComponent(reason)}`;
       console.log('Cancelling booking:', id);
       
       const response = await apiFetch(url, {
@@ -389,9 +349,16 @@ export const myBookingsApi = {
         return { success: true, message: 'Đã hủy đặt phòng thành công' };
       }
       
+      // Backend Controller returns NotFound for all errors, but error message contains details
+      let errorMessage = 'Không thể hủy đặt phòng.';
+      if (response.error) {
+        // Use error message from backend if available
+        errorMessage = response.error.message || errorMessage;
+      }
+      
       return { 
         success: false, 
-        message: response.error?.message || 'Không thể hủy đặt phòng.' 
+        message: errorMessage
       };
     } catch (error) {
       console.error('Error cancelling booking:', error);
@@ -462,81 +429,87 @@ export const myBookingsApi = {
     }
   },
 
-  // Check-in booking with images - API ONLY
-  checkIn: async (id: string, note?: string, images?: File[]): Promise<{ success: boolean; message: string }> => {
+  // Check-in for a booking
+  checkIn: async (
+    bookingId: string,
+    note?: string,
+    images?: File[]
+  ): Promise<{ success: boolean; message: string }> => {
     try {
-      // Use check-in-with-images endpoint with FormData
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(id)}-with-images`;
-      console.log('Checking in booking with images:', id);
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(bookingId)}`;
       
+      // Create FormData if images are provided
       const formData = new FormData();
       if (note) {
         formData.append('note', note);
       }
       if (images && images.length > 0) {
-        images.forEach((image) => {
+        images.forEach((image, index) => {
           formData.append('images', image);
         });
       }
       
-      const response = await apiFetch<BackendBookingResponse>(url, {
+      const response = await apiFetch(url, {
         method: 'POST',
-        body: formData,
+        body: images && images.length > 0 ? formData : (note ? JSON.stringify({ note }) : undefined),
       });
       
       if (response.success) {
         return { success: true, message: 'Check-in thành công!' };
       }
       
-      return { 
-        success: false, 
-        message: response.error?.message || 'Không thể check-in. Vui lòng thử lại.' 
+      return {
+        success: false,
+        message: response.error?.message || 'Không thể thực hiện check-in. Vui lòng thử lại.'
       };
     } catch (error) {
       console.error('Error checking in:', error);
-      return { 
-        success: false, 
-        message: 'Không thể kết nối đến server.' 
+      return {
+        success: false,
+        message: 'Không thể kết nối đến server.'
       };
     }
   },
 
-  // Check-out booking with images - API ONLY
-  checkOut: async (id: string, note?: string, images?: File[]): Promise<{ success: boolean; message: string }> => {
+  // Check-out for a booking
+  checkOut: async (
+    bookingId: string,
+    note?: string,
+    images?: File[]
+  ): Promise<{ success: boolean; message: string }> => {
     try {
-      // Use check-out-with-images endpoint with FormData
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(id)}-with-images`;
-      console.log('Checking out booking with images:', id);
+      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(bookingId)}`;
       
+      // Create FormData if images are provided
       const formData = new FormData();
       if (note) {
         formData.append('note', note);
       }
       if (images && images.length > 0) {
-        images.forEach((image) => {
+        images.forEach((image, index) => {
           formData.append('images', image);
         });
       }
       
-      const response = await apiFetch<BackendBookingResponse>(url, {
+      const response = await apiFetch(url, {
         method: 'POST',
-        body: formData,
+        body: images && images.length > 0 ? formData : (note ? JSON.stringify({ note }) : undefined),
       });
       
       if (response.success) {
         return { success: true, message: 'Check-out thành công!' };
       }
       
-      return { 
-        success: false, 
-        message: response.error?.message || 'Không thể check-out. Vui lòng thử lại.' 
+      return {
+        success: false,
+        message: response.error?.message || 'Không thể thực hiện check-out. Vui lòng thử lại.'
       };
     } catch (error) {
       console.error('Error checking out:', error);
-      return { 
-        success: false, 
-        message: 'Không thể kết nối đến server.' 
+      return {
+        success: false,
+        message: 'Không thể kết nối đến server.'
       };
     }
-  }
+  },
 };
