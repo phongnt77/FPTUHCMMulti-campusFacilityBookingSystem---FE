@@ -1,4 +1,4 @@
-import { test as base, Page } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 
 /**
  * Test Accounts - CẬP NHẬT THEO DATABASE THỰC TẾ CỦA BẠN
@@ -36,39 +36,45 @@ export const sharedState = {
 /**
  * Login helper function
  */
-export async function login(page: Page, email: string, password: string): Promise<boolean> {
+export async function login(page: Page, email: string, password: string): Promise<void> {
+  // Fail fast (do not allow tests to continue while still on /login)
+  await page.context().clearCookies();
+
+  // Ensure we're on the same origin before clearing storage.
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+
+  // Wait for login page
+  await page.getByRole('heading', { name: /đăng nhập/i }).waitFor({ timeout: 15000 });
+
+  // Some builds have multiple login modes; ensure "Tài khoản được cấp" is selected when present.
+  const providedAccountTab = page.getByRole('button', { name: /tài khoản được cấp/i });
+  if (await providedAccountTab.isVisible().catch(() => false)) {
+    await providedAccountTab.click();
+  }
+
+  // Use accessible selectors instead of input[type=password] (password may be rendered as type=text).
+  const usernameInput = page.getByRole('textbox', { name: /tên đăng nhập/i });
+  const passwordInput = page.getByRole('textbox', { name: /^password$/i });
+
+  await expect(usernameInput).toBeVisible({ timeout: 15000 });
+  await expect(passwordInput).toBeVisible({ timeout: 15000 });
+
+  await usernameInput.fill(email);
+  await passwordInput.fill(password);
+
+  await page.getByRole('button', { name: /đăng nhập/i }).click();
+
   try {
-    await page.goto('/login');
-    await page.waitForLoadState('networkidle');
-    
-    // Clear any existing session
-    await page.evaluate(() => {
-      sessionStorage.clear();
-      localStorage.clear();
-    });
-    
-    // Wait for login form
-    await page.waitForSelector('input[type="password"]', { timeout: 5000 });
-    
-    // Fill email - try multiple selectors
-    const emailInput = page.locator('input[type="text"]').first();
-    await emailInput.fill(email);
-    
-    // Fill password
-    const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill(password);
-    
-    // Click submit
-    const submitBtn = page.locator('button[type="submit"]');
-    await submitBtn.click();
-    
-    // Wait for navigation away from login page
     await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 15000 });
-    
-    return true;
-  } catch (error) {
-    console.error('Login failed:', error);
-    return false;
+  } catch {
+    // Common failure mode: still on /login due to wrong mode/creds/backend.
+    throw new Error('Login failed: still on /login after submit');
   }
 }
 
