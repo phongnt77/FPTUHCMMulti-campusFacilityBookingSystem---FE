@@ -64,6 +64,37 @@ interface BackendBookingResponse {
   specialRequirements: string;
 }
 
+const parseBackendDateTime = (value: string): Date | null => {
+  if (!value) return null;
+
+  // dd/MM/yyyy HH:mm:ss or dd/MM/yyyy HH:mm
+  const ddMMyyyyTime = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s*$/);
+  if (ddMMyyyyTime) {
+    const [, day, month, year, hours, minutes, seconds] = ddMMyyyyTime;
+    const date = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      Number(seconds ?? 0)
+    );
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  // dd/MM/yyyy (date only)
+  const ddMMyyyy = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/);
+  if (ddMMyyyy) {
+    const [, day, month, year] = ddMMyyyy;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  // ISO (or any other format Date can parse)
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 // Map backend facility response to frontend type
 const mapFacilityResponse = (f: FacilityResponse): Facility => ({
   id: f.facilityId,
@@ -108,10 +139,6 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBook
   // Check if the selected date is in the past
   const isPastDate = baseDateOnly.getTime() < todayOnly.getTime();
   const isToday = baseDateOnly.getTime() === todayOnly.getTime();
-  
-  // Get current hour and minute
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
   
   // Operating hours: 7:00 - 21:00
   for (let hour = 7; hour < 21; hour++) {
@@ -218,8 +245,13 @@ export const bookingApi = {
         response.data.forEach(booking => {
           // Only consider active bookings (not cancelled or rejected)
           if (booking.status !== 'Cancelled' && booking.status !== 'Rejected') {
-            const bookingStart = new Date(booking.startTime);
-            const bookingEnd = new Date(booking.endTime);
+            const bookingStart = parseBackendDateTime(booking.startTime);
+            const bookingEnd = parseBackendDateTime(booking.endTime);
+
+            // If backend returns an unexpected datetime format, skip this booking
+            // instead of crashing the whole Booking page.
+            if (!bookingStart || !bookingEnd) return;
+
             const bookingDate = bookingStart.toISOString().split('T')[0];
             
             // Check if booking is on the selected date

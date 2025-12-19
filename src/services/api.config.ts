@@ -36,7 +36,9 @@ export const API_ENDPOINTS = {
     SUBMIT: (id: string) => `/bookings/${id}/submit`,
     CANCEL: (id: string) => `/bookings/${id}`,
     CHECK_IN: (id: string) => `/bookings/${id}/check-in`,
+    CHECK_IN_WITH_IMAGES: (id: string) => `/bookings/${id}/check-in-with-images`,
     CHECK_OUT: (id: string) => `/bookings/${id}/check-out`,
+    CHECK_OUT_WITH_IMAGES: (id: string) => `/bookings/${id}/check-out-with-images`,
   },
   
   // Feedback
