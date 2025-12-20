@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const campusApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-campusApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { PaginatedResponse, ActionResponse, DeleteResponse } from '../../../../types/api';
 
 // Interface cho Campus từ API response
 export interface Campus {
@@ -37,25 +13,8 @@ export interface Campus {
   updatedAt: string; // ISO 8601 format
 }
 
-// Interface cho Pagination
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-}
-
-// Interface cho API Response với pagination
-export interface CampusesResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  code: number;
-  message: string;
-  data: Campus[];
-  pagination?: Pagination;
-}
+// Import Pagination from shared types
+import type { Pagination } from '../../../../types/api';
 
 // Interface cho Create/Update Campus Request
 export interface CampusRequest {
@@ -66,26 +25,20 @@ export interface CampusRequest {
   status: 'Active' | 'Inactive';
 }
 
+// Interface cho API Response với pagination
+export interface CampusesResponse extends PaginatedResponse<Campus> {
+  code: number;
+  message: string;
+}
+
 // Interface cho Create/Update Campus Response
-export interface CampusActionResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
+export interface CampusActionResponse extends ActionResponse<Campus> {
   code?: number;
   message?: string;
-  data?: Campus;
 }
 
 // Interface cho Delete Response
-export interface DeleteCampusResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-}
+export type DeleteCampusResponse = DeleteResponse;
 
 // Query parameters cho getCampuses
 export interface GetCampusesParams {
@@ -114,26 +67,13 @@ export const getCampuses = async (params?: GetCampusesParams): Promise<CampusesR
       queryParams.Limit = params.limit;
     }
 
-    const response = await campusApiClient.get<CampusesResponse>('/api/campuses/paged', {
+    const response = await apiClient.get<CampusesResponse>('/api/campuses/paged', {
       params: queryParams,
     });
 
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as CampusesResponse;
-      if (result) {
-        throw new Error(result.error?.message || result.message || 'Lỗi khi lấy danh sách campuses');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy danh sách campuses');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get campuses API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy danh sách campuses');
   }
 };
 
@@ -147,24 +87,10 @@ export const getCampuses = async (params?: GetCampusesParams): Promise<CampusesR
  */
 export const createCampus = async (campusData: CampusRequest): Promise<CampusActionResponse> => {
   try {
-    const response = await campusApiClient.post<CampusActionResponse>('/api/campuses', campusData);
-
+    const response = await apiClient.post<CampusActionResponse>('/api/campuses', campusData);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as CampusActionResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi tạo campus');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi tạo campus');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Create campus API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi tạo campus');
   }
 };
 
@@ -190,28 +116,15 @@ export const updateCampus = async (
       queryParams.status = status;
     }
 
-    const response = await campusApiClient.put<CampusActionResponse>(
+    const response = await apiClient.put<CampusActionResponse>(
       `/api/campuses/${campusId}`,
       campusData,
       { params: queryParams }
     );
 
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as CampusActionResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi cập nhật campus');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi cập nhật campus');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Update campus API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi cập nhật campus');
   }
 };
 
@@ -226,24 +139,10 @@ export const updateCampus = async (
  */
 export const deleteCampus = async (campusId: string): Promise<DeleteCampusResponse> => {
   try {
-    const response = await campusApiClient.delete<DeleteCampusResponse>(`/api/campuses/${campusId}`);
-
+    const response = await apiClient.delete<DeleteCampusResponse>(`/api/campuses/${campusId}`);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as DeleteCampusResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi vô hiệu hóa campus');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi vô hiệu hóa campus');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Delete campus API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi vô hiệu hóa campus');
   }
 };
 

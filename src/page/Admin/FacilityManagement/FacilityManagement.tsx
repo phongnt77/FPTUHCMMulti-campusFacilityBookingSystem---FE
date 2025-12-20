@@ -1,17 +1,56 @@
+/**
+ * FacilityManagement Component - Quản lý Facility và Facility Type
+ * 
+ * Component này cho phép admin quản lý:
+ * - Facilities: Tạo, chỉnh sửa, xóa, xem feedbacks và ratings
+ * - Facility Types: Tạo và chỉnh sửa loại facility
+ * 
+ * Tính năng:
+ * - Tab system: Chuyển đổi giữa "Facilities" và "Facility Types"
+ * - CRUD operations cho cả Facilities và Facility Types
+ * - Filters: Tên, status, type, campus
+ * - Pagination cho danh sách facilities
+ * - View feedbacks: Xem feedbacks của từng facility
+ * - View ratings: Xem rating trung bình của facility
+ * - Delete confirmation: Modal xác nhận trước khi xóa
+ * 
+ * Tabs:
+ * - facilities: Quản lý facilities
+ * - facility-types: Quản lý loại facilities
+ */
+
+// Import React hooks
 import { useState, useEffect, useCallback } from 'react'
+// Import icons
 import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2, Search, Filter, X, Tag, Star, MessageSquare, Eye } from 'lucide-react'
+// Import types và API functions cho Facilities
 import type { Facility, FacilityRequest, GetFacilitiesParams, FacilityFeedback } from './api/facilityApi'
 import { getFacilities, createFacility, updateFacility, deleteFacility, getFacilityFeedbacks, getFacilityRating } from './api/facilityApi'
+// Import types và API functions cho Facility Types
 import type { FacilityType, FacilityTypeRequest } from './api/facilityTypeApi'
 import { getFacilityTypes, createFacilityType, updateFacilityType } from './api/facilityTypeApi'
+// Import Campus API
 import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
+// Import toast hook
 import { useToast } from '../../../components/toast'
+// Import components
 import FacilityForm from './components/FacilityForm'
 import FacilityTypeForm from './components/FacilityTypeForm'
 import Pagination from '../Facility Dashboard/components/Pagination'
 
+/**
+ * Type định nghĩa các tab có sẵn
+ */
 type TabType = 'facilities' | 'facility-types'
 
+/**
+ * FacilityManagement Component Function
+ * 
+ * Component chính để quản lý facilities và facility types
+ * Không nhận props (self-contained)
+ * 
+ * @returns {JSX.Element} - JSX element chứa UI quản lý facilities
+ */
 const FacilityManagement = () => {
   const { showSuccess, showError } = useToast()
   

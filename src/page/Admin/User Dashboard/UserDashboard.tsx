@@ -1,12 +1,44 @@
+/**
+ * UserDashboard Component - Quản lý người dùng
+ * 
+ * Component này cho phép admin quản lý tất cả người dùng trong hệ thống:
+ * - Xem danh sách users với pagination
+ * - Filter theo nhiều tiêu chí (tên, email, role, campus, status)
+ * - Xóa user (không thể xóa admin)
+ * - Hiển thị thống kê (tổng số, students, lecturers, admins, active, inactive)
+ * 
+ * Tính năng:
+ * - Pagination: Phân trang danh sách users
+ * - Multiple filters: Tên, email, role, campus, status
+ * - Stats cards: Hiển thị thống kê tổng quan
+ * - Delete user: Xóa user (hard delete, không thể xóa admin)
+ * - Role badges: Hiển thị role với màu sắc khác nhau
+ * - Status badges: Hiển thị trạng thái Active/Inactive
+ * - Date formatting: Format date từ nhiều định dạng
+ */
+
+// Import React hooks
 import { useState, useEffect, useCallback, useMemo } from 'react'
+// Import icons
 import { Search, Trash2, Users, Filter, X, Loader2, AlertCircle } from 'lucide-react'
+// Import types và API functions
 import type { User, GetUsersParams } from './api/userApi'
 import { getUsers, deleteUser } from './api/userApi'
 import { getCampuses, type Campus } from '../CampusManagement/api/campusApi'
 import { getRoleById, type Role } from './api/roleApi'
+// Import toast hook
 import { useToast } from '../../../components/toast'
+// Import Pagination component
 import Pagination from '../Facility Dashboard/components/Pagination'
 
+/**
+ * UserDashboard Component Function
+ * 
+ * Component chính để quản lý users
+ * Không nhận props (self-contained)
+ * 
+ * @returns {JSX.Element} - JSX element chứa UI quản lý users
+ */
 const UserDashboard = () => {
   const { showSuccess, showError } = useToast()
   
@@ -159,6 +191,19 @@ const UserDashboard = () => {
   const getRoleName = (roleId: string): string => {
     const role = roles.get(roleId)
     return role ? role.roleName : roleId
+  }
+
+  /**
+   * Function: Get campus name by campusId
+   * 
+   * Tìm campus name từ campusId
+   * 
+   * @param {string} campusId - ID của campus
+   * @returns {string} - Tên campus hoặc campusId nếu không tìm thấy
+   */
+  const getCampusName = (campusId: string): string => {
+    const campus = campuses.find((c) => c.campusId === campusId)
+    return campus ? campus.name : campusId
   }
 
   // Get campus name by campusId
