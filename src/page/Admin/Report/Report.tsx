@@ -1,4 +1,31 @@
+/**
+ * Report Component - Báo cáo thống kê
+ * 
+ * Component này hiển thị báo cáo thống kê chi tiết về bookings:
+ * - Overall statistics: Tổng số bookings, tỷ lệ duyệt, hủy, hoàn thành, sử dụng
+ * - Daily statistics: Thống kê theo ngày
+ * - Facility statistics: Thống kê theo facility
+ * - Campus statistics: Thống kê theo campus
+ * 
+ * Tính năng:
+ * - Multiple period types: day, week, month, year, custom
+ * - Filters: Campus, Facility (optional)
+ * - Auto-refresh: Tự động load khi filter thay đổi
+ * - Date parsing: Hỗ trợ nhiều định dạng date từ backend
+ * - Visual cards: Hiển thị statistics với icons và màu sắc
+ * - Tables: Hiển thị chi tiết theo ngày, facility, campus
+ * 
+ * Period Types:
+ * - day: X ngày gần nhất (1, 3, 7, 14, 30 ngày)
+ * - week: 7 ngày gần nhất
+ * - month: Theo tháng (chọn tháng và năm)
+ * - year: Theo năm (chọn năm)
+ * - custom: Khoảng thời gian tùy chỉnh (chọn từ ngày - đến ngày)
+ */
+
+// Import React hooks
 import { useState, useEffect, useCallback } from 'react';
+// Import icons
 import {
   Calendar,
   Filter,
@@ -13,6 +40,7 @@ import {
   Building2,
   MapPin,
 } from 'lucide-react';
+// Import types và API functions
 import type {
   GetReportParams,
   ReportResponse,
@@ -20,9 +48,14 @@ import type {
 import { getReport } from './api/reportApi';
 import { getCampuses } from '../CampusManagement/api/campusApi';
 import { getFacilities } from '../FacilityManagement/api/facilityApi';
+// Import toast hook
 import { useToast } from '../../../components/toast';
 
-// Period type options
+/**
+ * Period type options
+ * 
+ * Các loại thời gian có thể chọn để xem báo cáo
+ */
 const PERIOD_TYPES = [
   { value: 'day', label: 'X ngày gần nhất' },
   { value: 'week', label: '7 ngày gần nhất' },
@@ -31,10 +64,18 @@ const PERIOD_TYPES = [
   { value: 'custom', label: 'Khoảng thời gian tùy chỉnh' },
 ] as const;
 
-// Days options for periodType='day'
+/**
+ * Days options for periodType='day'
+ * 
+ * Các tùy chọn số ngày khi chọn periodType='day'
+ */
 const DAYS_OPTIONS = [1, 3, 7, 14, 30];
 
-// Month options
+/**
+ * Month options
+ * 
+ * Danh sách các tháng (1-12)
+ */
 const MONTHS = [
   { value: 1, label: 'Tháng 1' },
   { value: 2, label: 'Tháng 2' },
@@ -50,6 +91,14 @@ const MONTHS = [
   { value: 12, label: 'Tháng 12' },
 ];
 
+/**
+ * Report Component Function
+ * 
+ * Component để hiển thị báo cáo thống kê
+ * Không nhận props (self-contained)
+ * 
+ * @returns {JSX.Element} - JSX element chứa UI báo cáo thống kê
+ */
 const Report = () => {
   const { showError } = useToast();
 

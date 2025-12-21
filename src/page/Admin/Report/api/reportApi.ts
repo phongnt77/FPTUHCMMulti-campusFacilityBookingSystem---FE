@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const reportApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-reportApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { ApiResponse } from '../../../../types/api';
 
 // Interface cho Daily Statistics
 export interface DailyStat {
@@ -76,27 +52,24 @@ export interface PeriodInfo {
   totalDays: number;
 }
 
+// Interface cho Report Data
+export interface ReportData {
+  // Period info
+  period?: PeriodInfo;
+  // Overall statistics (nested in 'overall' object)
+  overall?: OverallStatistics;
+  // Daily statistics
+  dailyStats?: DailyStat[];
+  // Facility statistics
+  facilityStats?: FacilityStat[];
+  // Campus statistics
+  campusStats?: CampusStat[];
+}
+
 // Interface cho Report Response
-export interface ReportResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
+export interface ReportResponse extends ApiResponse<ReportData> {
   code?: number;
   message?: string;
-  data?: {
-    // Period info
-    period?: PeriodInfo;
-    // Overall statistics (nested in 'overall' object)
-    overall?: OverallStatistics;
-    // Daily statistics
-    dailyStats?: DailyStat[];
-    // Facility statistics
-    facilityStats?: FacilityStat[];
-    // Campus statistics
-    campusStats?: CampusStat[];
-  };
 }
 
 // Query parameters cho getReport
@@ -147,30 +120,12 @@ export const getReport = async (params: GetReportParams): Promise<ReportResponse
       queryParams.facilityId = params.facilityId;
     }
 
-    // Debug logging
-    console.log('Report API request params:', queryParams);
-    
-    const response = await reportApiClient.get<ReportResponse>('/api/reports/bookings', {
+    const response = await apiClient.get<ReportResponse>('/api/reports/bookings', {
       params: queryParams,
     });
 
-    console.log('Report API raw response:', response.data);
-
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as ReportResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy báo cáo');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy báo cáo');
-    }
-
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-
-    console.error('Get report API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy báo cáo');
   }
 };
