@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const systemSettingApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-systemSettingApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { ApiResponse } from '../../../../types/api';
 
 // Interface cho System Settings
 export interface SystemSettings {
@@ -35,14 +11,7 @@ export interface SystemSettings {
 }
 
 // Interface cho API Response
-export interface SystemSettingsResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  data: SystemSettings;
-}
+export interface SystemSettingsResponse extends ApiResponse<SystemSettings> {}
 
 // Interface cho Update Request
 export interface UpdateSystemSettingsRequest {
@@ -62,24 +31,10 @@ export interface UpdateSystemSettingsRequest {
  */
 export const getSystemSettings = async (): Promise<SystemSettingsResponse> => {
   try {
-    const response = await systemSettingApiClient.get<SystemSettingsResponse>('/api/system-settings');
-
+    const response = await apiClient.get<SystemSettingsResponse>('/api/system-settings');
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as SystemSettingsResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy cấu hình hệ thống');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy cấu hình hệ thống');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get system settings API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy cấu hình hệ thống');
   }
 };
 
@@ -97,26 +52,12 @@ export const updateSystemSettings = async (
   settings: UpdateSystemSettingsRequest
 ): Promise<SystemSettingsResponse> => {
   try {
-    const response = await systemSettingApiClient.put<SystemSettingsResponse>(
+    const response = await apiClient.put<SystemSettingsResponse>(
       '/api/system-settings',
       settings
     );
-
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as SystemSettingsResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi cập nhật cấu hình hệ thống');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi cập nhật cấu hình hệ thống');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Update system settings API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi cập nhật cấu hình hệ thống');
   }
 };

@@ -1,14 +1,51 @@
+/**
+ * Facility Dashboard Component - Dashboard quản lý bookings
+ * 
+ * Component này cho phép Facility Admin quản lý bookings:
+ * - Xem danh sách bookings với pagination
+ * - Filter theo status
+ * - Approve/Reject bookings
+ * - Xem thống kê (stats cards)
+ * 
+ * Tính năng:
+ * - Pagination: Phân trang danh sách bookings
+ * - Status filter: Lọc theo trạng thái booking
+ * - Approve booking: Duyệt booking
+ * - Reject booking: Từ chối booking (có thể nhập lý do)
+ * - Stats cards: Hiển thị thống kê tổng quan
+ * - Booking cards: Hiển thị chi tiết từng booking
+ * - Action modal: Modal để approve/reject với lý do
+ * 
+ * Status options:
+ * - Draft: Bản nháp
+ * - Pending_Approval: Chờ duyệt
+ * - Approved: Đã duyệt
+ * - Rejected: Đã từ chối
+ * - Cancelled: Đã hủy
+ * - Completed: Hoàn thành
+ * - No_Show: Không đến
+ */
+
+// Import React hooks
 import { useState, useEffect, useCallback } from 'react'
+// Import icons
 import { CheckCircle2, Loader2, AlertCircle, Filter } from 'lucide-react'
+// Import types và API functions
 import type { AdminBooking, GetBookingsParams } from './api/adminBookingApi'
 import { getAdminBookings, approveBooking, rejectBooking } from './api/adminBookingApi'
+// Import toast hook
 import { useToast } from '../../../components/toast'
+// Import components
 import StatsCards from './components/StatsCards'
 import BookingCard from './components/BookingCard'
 import ActionModal from './components/ActionModal'
 import Pagination from './components/Pagination'
 
-// Status options theo API docs
+/**
+ * Status options theo API docs
+ * 
+ * Các trạng thái booking có thể filter
+ */
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả' },
   { value: 'Draft', label: 'Bản nháp' },
@@ -20,6 +57,14 @@ const STATUS_OPTIONS = [
   { value: 'No_Show', label: 'Không đến' }
 ] as const
 
+/**
+ * Dashboard Component Function
+ * 
+ * Component dashboard để quản lý bookings
+ * Không nhận props (self-contained)
+ * 
+ * @returns {JSX.Element} - JSX element chứa UI dashboard
+ */
 const Dashboard = () => {
   const { showSuccess, showError } = useToast()
   

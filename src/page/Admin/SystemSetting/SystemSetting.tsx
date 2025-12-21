@@ -1,8 +1,39 @@
+/**
+ * SystemSetting Component - Cấu hình hệ thống
+ * 
+ * Component này cho phép admin cấu hình các thông số thời gian của hệ thống:
+ * - minimumBookingHoursBeforeStart: Thời gian tối thiểu trước khi bắt đầu booking (giờ)
+ * - checkInMinutesBeforeStart: Số phút cho phép check-in trước thời gian bắt đầu
+ * - checkInMinutesAfterStart: Số phút cho phép check-in sau thời gian bắt đầu
+ * - checkOutMinutesAfterCheckIn: Thời gian tối thiểu sau khi check-in để được check-out (phút)
+ * - checkoutMinRatio: Tỷ lệ tối thiểu để được check-out (%)
+ * 
+ * Tính năng:
+ * - Load settings từ API khi component mount
+ * - Track changes: Phát hiện thay đổi so với giá trị ban đầu
+ * - Validation: Tất cả giá trị phải >= 0
+ * - Save changes: Lưu cấu hình mới
+ * - Reset changes: Hủy thay đổi và quay về giá trị ban đầu
+ * - Visual feedback: Hiển thị trạng thái "Có thay đổi chưa lưu" hoặc "Đã lưu thành công"
+ */
+
+// Import React hooks
 import { useState, useEffect } from 'react'
+// Import icons
 import { Settings, Save, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+// Import API functions và types
 import { getSystemSettings, updateSystemSettings, type SystemSettings } from './api/systemSettingApi'
+// Import toast hook
 import { useToast } from '../../../components/toast'
 
+/**
+ * SystemSetting Component Function
+ * 
+ * Component để quản lý cấu hình hệ thống
+ * Không nhận props (self-contained)
+ * 
+ * @returns {JSX.Element} - JSX element chứa form cấu hình hệ thống
+ */
 const SystemSetting = () => {
   const { showSuccess, showError } = useToast()
   

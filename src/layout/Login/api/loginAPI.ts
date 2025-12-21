@@ -1,28 +1,5 @@
 import axios from 'axios';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const apiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = sessionStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { publicApiClient, apiClient, handleApiError } from '../../../services/apiClient';
 
 // Interface cho request body
 export interface LoginRequest {
@@ -77,7 +54,7 @@ export const loginAPI = async (
   password: string
 ): Promise<{ success: boolean; message: string; data?: AuthUser }> => {
   try {
-    const response = await apiClient.post<LoginResponse>('/api/auth/login', {
+    const response = await publicApiClient.post<LoginResponse>('/api/auth/login', {
       emailOrUsername: emailOrUsername.trim(),
       password: password,
     } as LoginRequest);
@@ -122,37 +99,10 @@ export const loginAPI = async (
       message: 'Đăng nhập thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    // Xử lý lỗi từ axios
-    if (axios.isAxiosError(error)) {
-      // Lỗi từ server (401, 400, 500, etc.)
-      if (error.response) {
-        const result = error.response.data as LoginResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Đăng nhập thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Đăng nhập thất bại',
-        };
-      }
-      
-      // Lỗi network (không kết nối được đến server)
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    // Lỗi khác
-    console.error('Login API error:', error);
+    const errorMessage = handleApiError(error, 'Đăng nhập thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };
@@ -166,29 +116,29 @@ export const loginAPI = async (
  * - API yêu cầu authentication (token phải có trong header)
  */
 export const logoutAPI = async (): Promise<{ success: boolean; message: string }> => {
+  const clearAuthData = () => {
+    const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
+    sessionStorage.removeItem('auth_token');
+    sessionStorage.removeItem('auth_user');
+    sessionStorage.removeItem('is_google_login');
+    
+    // Revoke Google session nếu user đăng nhập bằng Google
+    if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
+      try {
+        window.google.accounts.id.disableAutoSelect();
+      } catch (error) {
+        console.warn('Error revoking Google session:', error);
+      }
+    }
+  };
+
   try {
     const response = await apiClient.post<LogoutResponse>('/api/auth/logout');
-
     const result = response.data;
 
     // Xử lý response thành công (200)
     if (result.success) {
-      // Xóa token và user info khỏi sessionStorage theo yêu cầu của API
-      // Import clearAuth để revoke Google session nếu cần
-      const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
-      sessionStorage.removeItem('auth_token');
-      sessionStorage.removeItem('auth_user');
-      sessionStorage.removeItem('is_google_login');
-      
-      // Revoke Google session nếu user đăng nhập bằng Google
-      if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
-        try {
-          window.google.accounts.id.disableAutoSelect();
-        } catch (error) {
-          console.warn('Error revoking Google session:', error);
-        }
-      }
-
+      clearAuthData();
       return {
         success: true,
         message: 'Đăng xuất thành công!',
@@ -210,89 +160,23 @@ export const logoutAPI = async (): Promise<{ success: boolean; message: string }
   } catch (error) {
     // Xử lý lỗi từ axios
     if (axios.isAxiosError(error)) {
-      // Lỗi từ server (401, 400, 500, etc.)
-      if (error.response) {
-        // Nếu là lỗi 401 (Unauthorized), có thể token đã hết hạn
-        // Vẫn xóa token và user info để đảm bảo client side clean
-        if (error.response.status === 401) {
-          const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
-          sessionStorage.removeItem('auth_token');
-          sessionStorage.removeItem('auth_user');
-          sessionStorage.removeItem('is_google_login');
-          
-          // Revoke Google session nếu user đăng nhập bằng Google
-          if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
-            try {
-              window.google.accounts.id.disableAutoSelect();
-            } catch (error) {
-              console.warn('Error revoking Google session:', error);
-            }
-          }
-          
-          return {
-            success: false,
-            message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-          };
-        }
-
-        const result = error.response.data as LogoutResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Đăng xuất thất bại',
-          };
-        }
+      // Nếu là lỗi 401 (Unauthorized), có thể token đã hết hạn
+      // Vẫn xóa token và user info để đảm bảo client side clean
+      if (error.response?.status === 401) {
+        clearAuthData();
         return {
           success: false,
-          message: error.response.statusText || 'Đăng xuất thất bại',
-        };
-      }
-      
-      // Lỗi network (không kết nối được đến server)
-      if (error.request) {
-        // Ngay cả khi không kết nối được, vẫn xóa token ở client side
-        // để đảm bảo user có thể logout ngay cả khi server không phản hồi
-        const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
-        sessionStorage.removeItem('auth_token');
-        sessionStorage.removeItem('auth_user');
-        sessionStorage.removeItem('is_google_login');
-        
-        // Revoke Google session nếu user đăng nhập bằng Google
-        if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
-          try {
-            window.google.accounts.id.disableAutoSelect();
-          } catch (error) {
-            console.warn('Error revoking Google session:', error);
-          }
-        }
-        
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Đã xóa thông tin đăng nhập ở client.',
+          message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
         };
       }
     }
 
-    // Lỗi khác
-    console.error('Logout API error:', error);
-    // Vẫn xóa token để đảm bảo client side clean
-    const wasGoogleLogin = sessionStorage.getItem('is_google_login') === 'true';
-    sessionStorage.removeItem('auth_token');
-    sessionStorage.removeItem('auth_user');
-    sessionStorage.removeItem('is_google_login');
-    
-    // Revoke Google session nếu user đăng nhập bằng Google
-    if (wasGoogleLogin && typeof window.google !== 'undefined' && window.google.accounts) {
-      try {
-        window.google.accounts.id.disableAutoSelect();
-      } catch (error) {
-        console.warn('Error revoking Google session:', error);
-      }
-    }
-    
+    // Ngay cả khi không kết nối được, vẫn xóa token ở client side
+    clearAuthData();
+    const errorMessage = handleApiError(error, 'Đăng xuất thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Đã xóa thông tin đăng nhập ở client.',
+      message: errorMessage.message || 'Đã xóa thông tin đăng nhập ở client.',
     };
   }
 };

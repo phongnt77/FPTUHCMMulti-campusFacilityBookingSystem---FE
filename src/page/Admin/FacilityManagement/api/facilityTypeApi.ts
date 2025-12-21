@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const facilityTypeApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-facilityTypeApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { PaginatedResponse, ActionResponse } from '../../../../types/api';
 
 // Interface cho FacilityType từ API response
 export interface FacilityType {
@@ -38,26 +14,6 @@ export interface FacilityType {
   updatedAt: string; // ISO 8601 format
 }
 
-// Interface cho Pagination
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-}
-
-// Interface cho API Response với pagination
-export interface FacilityTypesResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  code?: number;
-  message?: string;
-  data: FacilityType[];
-  pagination?: Pagination;
-}
-
 // Interface cho Create/Update FacilityType Request
 export interface FacilityTypeRequest {
   name: string;
@@ -68,15 +24,14 @@ export interface FacilityTypeRequest {
   iconUrl: string;
 }
 
-// Interface cho Create/Update FacilityType Response
-export interface FacilityTypeActionResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  data?: FacilityType;
+// Interface cho API Response với pagination
+export interface FacilityTypesResponse extends PaginatedResponse<FacilityType> {
+  code?: number;
+  message?: string;
 }
+
+// Interface cho Create/Update FacilityType Response
+export interface FacilityTypeActionResponse extends ActionResponse<FacilityType> {}
 
 // Query parameters cho getFacilityTypes
 export interface GetFacilityTypesParams {
@@ -104,26 +59,13 @@ export const getFacilityTypes = async (params?: GetFacilityTypesParams): Promise
       queryParams.Limit = params.limit;
     }
 
-    const response = await facilityTypeApiClient.get<FacilityTypesResponse>('/api/facility-types', {
+    const response = await apiClient.get<FacilityTypesResponse>('/api/facility-types', {
       params: queryParams,
     });
 
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as FacilityTypesResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy danh sách facility types');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy danh sách facility types');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get facility types API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy danh sách facility types');
   }
 };
 
@@ -137,24 +79,10 @@ export const getFacilityTypes = async (params?: GetFacilityTypesParams): Promise
  */
 export const getFacilityTypeById = async (typeId: string): Promise<FacilityTypeActionResponse> => {
   try {
-    const response = await facilityTypeApiClient.get<FacilityTypeActionResponse>(`/api/facility-types/${typeId}`);
-
+    const response = await apiClient.get<FacilityTypeActionResponse>(`/api/facility-types/${typeId}`);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as FacilityTypeActionResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy chi tiết facility type');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy chi tiết facility type');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get facility type by ID API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy chi tiết facility type');
   }
 };
 
@@ -168,24 +96,10 @@ export const getFacilityTypeById = async (typeId: string): Promise<FacilityTypeA
  */
 export const createFacilityType = async (facilityTypeData: FacilityTypeRequest): Promise<FacilityTypeActionResponse> => {
   try {
-    const response = await facilityTypeApiClient.post<FacilityTypeActionResponse>('/api/facility-types', facilityTypeData);
-
+    const response = await apiClient.post<FacilityTypeActionResponse>('/api/facility-types', facilityTypeData);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as FacilityTypeActionResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi tạo facility type');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi tạo facility type');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Create facility type API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi tạo facility type');
   }
 };
 
@@ -203,27 +117,13 @@ export const updateFacilityType = async (
   facilityTypeData: FacilityTypeRequest
 ): Promise<FacilityTypeActionResponse> => {
   try {
-    const response = await facilityTypeApiClient.put<FacilityTypeActionResponse>(
+    const response = await apiClient.put<FacilityTypeActionResponse>(
       `/api/facility-types/${typeId}`,
       facilityTypeData
     );
-
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as FacilityTypeActionResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi cập nhật facility type');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi cập nhật facility type');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Update facility type API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi cập nhật facility type');
   }
 };
 

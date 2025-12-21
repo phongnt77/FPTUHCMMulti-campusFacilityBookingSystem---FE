@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const userApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-userApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { PaginatedResponse, ActionResponse, DeleteResponse } from '../../../../types/api';
 
 // Interface cho User từ API response
 export interface User {
@@ -44,37 +20,14 @@ export interface User {
   campusName?: string; // Có thể có hoặc không
 }
 
-// Interface cho Pagination
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-}
-
 // Interface cho API Response với pagination
-export interface UsersResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  data: User[];
-  pagination?: Pagination;
-}
+export interface UsersResponse extends PaginatedResponse<User> {}
 
 // Interface cho User Detail Response
-export interface UserDetailResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  data?: User;
-}
+export interface UserDetailResponse extends ActionResponse<User> {}
 
 // Interface cho Delete Response
-export interface DeleteUserResponse {
-  success: boolean;
+export interface DeleteUserResponse extends DeleteResponse {
   error: {
     code: string;
   } | null;
@@ -132,26 +85,13 @@ export const getUsers = async (params?: GetUsersParams): Promise<UsersResponse> 
       queryParams.limit = params.limit;
     }
 
-    const response = await userApiClient.get<UsersResponse>('/api/users', {
+    const response = await apiClient.get<UsersResponse>('/api/users', {
       params: queryParams,
     });
 
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as UsersResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy danh sách users');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy danh sách users');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get users API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy danh sách users');
   }
 };
 
@@ -165,24 +105,10 @@ export const getUsers = async (params?: GetUsersParams): Promise<UsersResponse> 
  */
 export const getUserById = async (userId: string): Promise<UserDetailResponse> => {
   try {
-    const response = await userApiClient.get<UserDetailResponse>(`/api/users/${userId}`);
-
+    const response = await apiClient.get<UserDetailResponse>(`/api/users/${userId}`);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as UserDetailResponse;
-      if (result?.error) {
-        throw new Error(result.error.message || 'Lỗi khi lấy chi tiết user');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi lấy chi tiết user');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Get user by ID API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy chi tiết user');
   }
 };
 
@@ -196,24 +122,10 @@ export const getUserById = async (userId: string): Promise<UserDetailResponse> =
  */
 export const deleteUser = async (userId: string): Promise<DeleteUserResponse> => {
   try {
-    const response = await userApiClient.delete<DeleteUserResponse>(`/api/users/${userId}`);
-
+    const response = await apiClient.delete<DeleteUserResponse>(`/api/users/${userId}`);
     return response.data;
-  } catch (error: any) {
-    if (error.response) {
-      const result = error.response.data as DeleteUserResponse;
-      if (result?.error) {
-        throw new Error(result.error.code || result.message || 'Lỗi khi xóa user');
-      }
-      throw new Error(error.response.statusText || 'Lỗi khi xóa user');
-    }
-    
-    if (error.request) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-    
-    console.error('Delete user API error:', error);
-    throw new Error('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi xóa user');
   }
 };
 
