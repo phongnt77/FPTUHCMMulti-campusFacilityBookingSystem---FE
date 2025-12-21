@@ -90,65 +90,112 @@ const mapFacilityType = (typeName: string): FacilityType => {
   return typeMap[typeName] || 'Classroom';
 };
 
-// Generate time slots for a facility
-// minimumBookingHours must be provided (from system settings)
+/**
+ * Tạo danh sách time slots cho một ngày cụ thể
+ * 
+ * @description Function này tạo 14 slots (7:00-21:00), mỗi slot 1 tiếng.
+ *              Mỗi slot sẽ được đánh dấu available/unavailable dựa trên:
+ *              1. Ngày đã qua (isPastDate)
+ *              2. Slot đã qua trong ngày hôm nay (isPastSlot)
+ *              3. Trong khoảng thời gian tối thiểu (isWithinMinimumHours)
+ *              4. Đã có người đặt (isBooked)
+ * 
+ * @param date - Ngày cần tạo slots (format: "YYYY-MM-DD")
+ * @param bookedSlots - Danh sách các giờ đã được đặt (ví dụ: ["09:00", "10:00"])
+ * @param minimumBookingHours - Số giờ tối thiểu phải đặt trước (từ system settings)
+ * @returns Array of TimeSlot objects
+ * 
+ * @example
+ * // Ngày 2025-12-16, hiện tại 7:36, minimumBookingHours = 3
+ * generateTimeSlots("2025-12-16", ["14:00"], 3)
+ * // Kết quả:
+ * // - 07:00: unavailable (đã qua)
+ * // - 08:00: unavailable (8:00 - 7:36 = 0.4h < 3h)
+ * // - 09:00: unavailable (9:00 - 7:36 = 1.4h < 3h)
+ * // - 10:00: unavailable (10:00 - 7:36 = 2.4h < 3h)
+ * // - 11:00: AVAILABLE (11:00 - 7:36 = 3.4h >= 3h)
+ * // - 14:00: unavailable (đã được đặt)
+ */
 const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBookingHours: number): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   
-  // Parse the date string (format: YYYY-MM-DD)
+  // ============================================
+  // BƯỚC 1: PARSE VÀ CHUẨN HÓA NGÀY
+  // ============================================
+  // Parse ngày được chọn (format: YYYY-MM-DD)
   const baseDate = new Date(date + 'T00:00:00');
+  
+  // Lấy ngày hôm nay (reset về 00:00:00 để so sánh chỉ phần ngày)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  
+  // Thời gian hiện tại (để tính toán slots đã qua)
   const now = new Date();
   
-  // Normalize dates to compare only the date part (ignore time)
+  // Chuẩn hóa ngày để so sánh (bỏ qua phần giờ)
   const baseDateOnly = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   
-  // Check if the selected date is in the past
-  const isPastDate = baseDateOnly.getTime() < todayOnly.getTime();
-  const isToday = baseDateOnly.getTime() === todayOnly.getTime();
+  // ============================================
+  // BƯỚC 2: XÁC ĐỊNH NGÀY QUÁ KHỨ / HÔM NAY
+  // ============================================
+  const isPastDate = baseDateOnly.getTime() < todayOnly.getTime();  // Ngày đã qua?
+  const isToday = baseDateOnly.getTime() === todayOnly.getTime();   // Là hôm nay?
   
-  // Get current hour and minute
+  // Lưu giờ hiện tại (dùng cho debug)
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   
-  // Operating hours: 7:00 - 21:00
+  // ============================================
+  // BƯỚC 3: TẠO 14 SLOTS (7:00 - 21:00)
+  // ============================================
   for (let hour = 7; hour < 21; hour++) {
-    // Calculate the slot start time
+    // Tạo thời gian bắt đầu của slot
     const slotStartTime = new Date(baseDate);
     slotStartTime.setHours(hour, 0, 0, 0);
     
-    // Calculate time difference in hours between slot start time and current time
+    // Tính số giờ từ hiện tại đến slot
+    // Ví dụ: hiện tại 7:36, slot 10:00 → hoursUntilSlot = 2.4 giờ
     const hoursUntilSlot = (slotStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
     
-    // Past time slots are always unavailable
-    // - If the date is in the past, all slots are unavailable
-    // - If it's today, only slots that have already passed are unavailable
+    // ============================================
+    // KIỂM TRA 1: SLOT ĐÃ QUA CHƯA?
+    // ============================================
     let isPastSlot = false;
     if (isPastDate) {
-      isPastSlot = true; // Entire day is in the past
+      // Toàn bộ ngày đã qua → tất cả slots unavailable
+      isPastSlot = true;
     } else if (isToday) {
-      // Same day - disable only slots that have already passed (slot start time < current time)
-      // If current time is 7:36, slot 7:00 is in the past (7:00 < 7:36)
-      // If current time is 7:36, slot 8:00 is in the future (8:00 > 7:36)
+      // Cùng ngày → chỉ disable slots đã qua
+      // Ví dụ: hiện tại 7:36, slot 7:00 đã qua (7:00 < 7:36)
       if (slotStartTime.getTime() < now.getTime()) {
-        isPastSlot = true; // Slot has already passed
+        isPastSlot = true;
       }
     }
     
-    // Check if slot is within minimum booking hours (must book at least X hours in advance)
-    // Example: If minimumBookingHours = 3, current time is 7:36, slot 10:00 is disabled (10:00 - 7:36 = 2.4 hours < 3 hours)
-    // Example: If minimumBookingHours = 3, current time is 7:36, slot 11:00 is available (11:00 - 7:36 = 3.4 hours >= 3 hours)
-    // Only check for future slots (hoursUntilSlot > 0)
+    // ============================================
+    // KIỂM TRA 2: TRONG KHOẢNG THỜI GIAN TỐI THIỂU?
+    // ============================================
+    // Phải đặt trước ít nhất X giờ (lấy từ system settings)
+    // Chỉ áp dụng cho slots trong tương lai (hoursUntilSlot > 0)
+    // Ví dụ: minimumBookingHours = 3, hiện tại 7:36
+    //   - Slot 10:00: 2.4h < 3h → unavailable
+    //   - Slot 11:00: 3.4h >= 3h → available
     const isWithinMinimumHours = hoursUntilSlot > 0 && hoursUntilSlot < minimumBookingHours;
     
+    // ============================================
+    // KIỂM TRA 3: ĐÃ CÓ NGƯỜI ĐẶT?
+    // ============================================
     const isBooked = bookedSlots.includes(`${hour.toString().padStart(2, '0')}:00`);
     
+    // ============================================
+    // TẠO SLOT OBJECT
+    // ============================================
     slots.push({
       id: `slot-${hour}`,
-      startTime: `${hour.toString().padStart(2, '0')}:00`,
-      endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
+      startTime: `${hour.toString().padStart(2, '0')}:00`,  // "07:00", "08:00", ...
+      endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,  // "08:00", "09:00", ...
+      // Slot available khi: không phải quá khứ, không trong minimum hours, chưa được đặt
       isAvailable: !isPastSlot && !isWithinMinimumHours && !isBooked,
     });
   }
@@ -156,8 +203,21 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBook
   return slots;
 };
 
+/**
+ * Booking API - Tập hợp các API calls cho chức năng đặt phòng
+ */
 export const bookingApi = {
-  // Get system settings (public endpoint)
+  /**
+   * Lấy cấu hình hệ thống từ backend
+   * 
+   * @description Endpoint public, không cần auth.
+   *              Trả về các settings như:
+   *              - minimumBookingHoursBeforeStart: Số giờ tối thiểu phải đặt trước
+   *              - checkInMinutesBeforeStart: Số phút được check-in trước giờ đặt
+   *              - checkInMinutesAfterStart: Số phút được check-in sau giờ đặt
+   * 
+   * @returns SystemSettings object hoặc null nếu lỗi
+   */
   getSystemSettings: async (): Promise<SystemSettings | null> => {
     try {
       const url = `${API_BASE_URL}${API_ENDPOINTS.SYSTEM_SETTINGS.GET}`;
@@ -170,16 +230,20 @@ export const bookingApi = {
       }
       
       console.error('Failed to fetch system settings:', response.error);
-      // Return null if API fails - let caller handle the error
+      // Trả về null nếu API fail - caller sẽ xử lý (dùng default values)
       return null;
     } catch (error) {
       console.error('Error fetching system settings:', error);
-      // Return null if API fails - let caller handle the error
       return null;
     }
   },
 
-  // Get facility details by ID - API ONLY
+  /**
+   * Lấy thông tin chi tiết facility theo ID
+   * 
+   * @param id - Facility ID (ví dụ: "F00001")
+   * @returns Facility object hoặc null nếu không tìm thấy
+   */
   getFacilityById: async (id: string): Promise<Facility | null> => {
     try {
       const url = `${API_BASE_URL}${API_ENDPOINTS.FACILITY.GET_BY_ID(id)}`;
@@ -188,6 +252,7 @@ export const bookingApi = {
       const response = await apiFetch<FacilityResponse>(url);
       
       if (response.success && response.data) {
+        // Map response từ backend sang frontend Facility type
         return mapFacilityResponse(response.data);
       }
       
@@ -199,38 +264,54 @@ export const bookingApi = {
     }
   },
 
-  // Get available time slots for a facility on a specific date - API ONLY
-  // minimumBookingHours must be provided (from system settings)
+  /**
+   * Lấy danh sách time slots khả dụng cho facility vào ngày cụ thể
+   * 
+   * @description Flow:
+   *   1. Gọi API lấy tất cả bookings của facility
+   *   2. Filter bookings: chỉ lấy active (không Cancelled/Rejected)
+   *   3. Filter bookings: chỉ lấy cùng ngày
+   *   4. Tính toán các giờ đã bị đặt
+   *   5. Gọi generateTimeSlots với danh sách booked
+   * 
+   * @param facilityId - ID của facility
+   * @param date - Ngày cần kiểm tra (format: "YYYY-MM-DD")
+   * @param minimumBookingHours - Số giờ tối thiểu phải đặt trước (từ system settings)
+   * @returns Array of TimeSlot objects
+   */
   getAvailableTimeSlots: async (facilityId: string, date: string, minimumBookingHours: number): Promise<TimeSlot[]> => {
     try {
-      // Get existing bookings for this facility
+      // ============================================
+      // BƯỚC 1: LẤY TẤT CẢ BOOKINGS CỦA FACILITY
+      // ============================================
       const url = buildUrl(API_ENDPOINTS.BOOKING.GET_ALL, {
         facilityId,
         page: 1,
-        limit: 100,
+        limit: 100,  // Lấy tối đa 100 bookings
       });
       
       const response = await apiFetch<BackendBookingResponse[]>(url);
       
-      // Extract booked time slots - mark all hours that overlap with bookings
+      // ============================================
+      // BƯỚC 2: TÍNH TOÁN CÁC GIỜ ĐÃ ĐƯỢC ĐẶT
+      // ============================================
       const bookedSlots: string[] = [];
       if (response.success && response.data) {
         response.data.forEach(booking => {
-          // Only consider active bookings (not cancelled or rejected)
+          // Chỉ xét bookings active (không Cancelled/Rejected)
           if (booking.status !== 'Cancelled' && booking.status !== 'Rejected') {
             const bookingStart = new Date(booking.startTime);
             const bookingEnd = new Date(booking.endTime);
             const bookingDate = bookingStart.toISOString().split('T')[0];
             
-            // Check if booking is on the selected date
+            // Chỉ xét bookings cùng ngày
             if (bookingDate === date) {
-              // Get start and end hours
               const startHour = bookingStart.getHours();
               const endHour = bookingEnd.getHours();
               const endMinute = bookingEnd.getMinutes();
               
-              // Mark all hours that overlap with this booking
-              // If booking is 8:00-10:00, disable slots 8:00 and 9:00
+              // Đánh dấu tất cả giờ bị overlap
+              // Ví dụ: booking 8:00-10:00 → disable slots 8:00 và 9:00
               for (let hour = startHour; hour < endHour; hour++) {
                 const slotTime = `${hour.toString().padStart(2, '0')}:00`;
                 if (!bookedSlots.includes(slotTime)) {
@@ -238,8 +319,8 @@ export const bookingApi = {
                 }
               }
               
-              // Also check if the booking extends into the next hour
-              // If booking ends at 10:30, we should also disable 10:00 slot
+              // Nếu booking kết thúc giữa giờ, cũng disable slot đó
+              // Ví dụ: booking kết thúc 10:30 → disable slot 10:00
               if (endMinute > 0 && endHour < 21) {
                 const slotTime = `${endHour.toString().padStart(2, '0')}:00`;
                 if (!bookedSlots.includes(slotTime)) {
@@ -251,25 +332,55 @@ export const bookingApi = {
         });
       }
       
+      // ============================================
+      // BƯỚC 3: TẠO SLOTS VỚI THÔNG TIN AVAILABILITY
+      // ============================================
       return generateTimeSlots(date, bookedSlots, minimumBookingHours);
     } catch (error) {
       console.error('Error fetching time slots:', error);
-      // Return empty slots if API fails - caller should handle the error
+      // Throw error để caller xử lý (hiển thị thông báo lỗi)
       throw error;
     }
   },
 
-  // Submit a booking request - API ONLY
+  /**
+   * Gửi yêu cầu đặt phòng mới
+   * 
+   * @description Tạo booking với trạng thái "Pending_Approval".
+   *              Admin sẽ duyệt/từ chối sau.
+   * 
+   * @param booking - Thông tin booking từ form
+   * @returns BookingResponse với id, status, message
+   * 
+   * @example
+   * submitBooking({
+   *   facilityId: "F00001",
+   *   userId: "U00001",
+   *   date: "2025-12-16",
+   *   startTime: "09:00",
+   *   endTime: "10:00",
+   *   purpose: "Họp nhóm",
+   *   numberOfPeople: 5,
+   *   notes: "Cần máy chiếu"
+   * })
+   */
   submitBooking: async (booking: BookingRequest): Promise<BookingResponse> => {
     try {
       const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CREATE}`;
       
-      // Format dates for backend
+      // ============================================
+      // FORMAT DATETIME CHO BACKEND
+      // ============================================
+      // Combine date + time thành ISO 8601 format
+      // "2025-12-16" + "09:00" → "2025-12-16T09:00:00"
       const startDateTime = `${booking.date}T${booking.startTime}:00`;
       const endDateTime = `${booking.date}T${booking.endTime}:00`;
       
       console.log('Submitting booking:', { url, booking });
       
+      // ============================================
+      // GỬI REQUEST TẠO BOOKING
+      // ============================================
       const response = await apiFetch<BackendBookingResponse>(url, {
         method: 'POST',
         body: JSON.stringify({
@@ -285,6 +396,9 @@ export const bookingApi = {
       
       console.log('Booking response:', response);
       
+      // ============================================
+      // XỬ LÝ RESPONSE
+      // ============================================
       if (response.success && response.data) {
         return {
           id: response.data.bookingId,
@@ -293,7 +407,7 @@ export const bookingApi = {
         };
       }
       
-      // Return error
+      // Trả về lỗi từ backend
       return {
         id: '',
         status: 'rejected',
