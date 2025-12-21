@@ -235,7 +235,7 @@ export const rejectBooking = async (
     if (error.response) {
       const result = error.response.data as BookingActionResponse;
       if (result?.error) {
-        throw new Error(result.error.code || result.message || 'Lỗi khi từ chối booking');
+        throw new Error(result.error.message || 'Lỗi khi từ chối booking');
       }
       throw new Error(error.response.statusText || 'Lỗi khi từ chối booking');
     }
