@@ -273,6 +273,104 @@ const MyBookingsPage = () => {
     }
   };
 
+  /**
+   * Format thời gian an toàn - xử lý nhiều định dạng đầu vào khác nhau
+   * 
+   * @description Hàm này xử lý việc format thời gian từ nhiều nguồn dữ liệu khác nhau:
+   *   - Date object (hợp lệ hoặc không hợp lệ)
+   *   - String format "HH:mm" (ví dụ: "09:00")
+   *   - String format "dd/MM/yyyy HH:mm:ss" (ví dụ: "10/12/2025 09:00:00")
+   *   - Null hoặc undefined
+   * 
+   * Hàm sẽ tự động detect định dạng và convert về format chuẩn "HH:mm" (24h).
+   * Nếu không thể parse được, sẽ trả về "N/A" thay vì "Invalid Date".
+   * 
+   * @param time - Dữ liệu thời gian cần format:
+   *   - Date object: JavaScript Date object (có thể là Invalid Date)
+   *   - String "HH:mm": Chuỗi thời gian đã format sẵn (ví dụ: "09:00")
+   *   - String "dd/MM/yyyy HH:mm:ss": Chuỗi datetime từ backend
+   *   - null/undefined: Giá trị rỗng
+   * 
+   * @returns Chuỗi format "HH:mm" (24h) hoặc "N/A" nếu không thể parse
+   * 
+   * @example
+   * formatTimeSafe(new Date("2025-12-16T09:00:00")) // → "09:00"
+   * formatTimeSafe("09:00") // → "09:00"
+   * formatTimeSafe("10/12/2025 09:00:00") // → "09:00"
+   * formatTimeSafe(null) // → "N/A"
+   * formatTimeSafe(new Date("invalid")) // → "N/A"
+   */
+  const formatTimeSafe = (time: string | Date | null | undefined): string => {
+    // ============================================
+    // BƯỚC 1: KIỂM TRA NULL/UNDEFINED
+    // ============================================
+    if (!time) return 'N/A';
+    
+    // ============================================
+    // BƯỚC 2: XỬ LÝ DATE OBJECT
+    // ============================================
+    if (time instanceof Date) {
+      // Kiểm tra Date có hợp lệ không (Invalid Date sẽ có getTime() = NaN)
+      if (isNaN(time.getTime())) return 'N/A';
+      
+      // Format Date thành chuỗi "HH:mm" (24h format)
+      try {
+        return time.toLocaleTimeString('vi-VN', { 
+          hour: '2-digit',    // Hiển thị 2 chữ số cho giờ (09, 10, ...)
+          minute: '2-digit',   // Hiển thị 2 chữ số cho phút (00, 05, ...)
+          hour12: false        // Sử dụng format 24 giờ (không dùng AM/PM)
+        });
+      } catch {
+        // Nếu có lỗi khi format, trả về "N/A"
+        return 'N/A';
+      }
+    }
+    
+    // ============================================
+    // BƯỚC 3: XỬ LÝ STRING
+    // ============================================
+    if (typeof time === 'string') {
+      // Case 1: String đã là format "HH:mm" (ví dụ: "09:00", "14:30")
+      // Regex kiểm tra: 2 chữ số, dấu :, 2 chữ số
+      if (/^\d{2}:\d{2}$/.test(time)) {
+        return time; // Trả về luôn không cần xử lý thêm
+      }
+      
+      // Case 2: String có format datetime (ví dụ: "10/12/2025 09:00:00")
+      // Extract phần thời gian bằng regex: tìm pattern "HH:mm" hoặc "HH:mm:ss"
+      const timeMatch = time.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        // timeMatch[1] = giờ, timeMatch[2] = phút
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
+      
+      // Case 3: String có format khác, thử parse thành Date object
+      // Sử dụng hàm parseDateString đã có sẵn để parse
+      const date = parseDateString(time);
+      if (date && !isNaN(date.getTime())) {
+        // Nếu parse thành công, format lại thành "HH:mm"
+        try {
+          return date.toLocaleTimeString('vi-VN', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          });
+        } catch {
+          return 'N/A';
+        }
+      }
+      
+      // Nếu không parse được, trả về "N/A"
+      return 'N/A';
+    }
+    
+    // ============================================
+    // BƯỚC 4: FALLBACK
+    // ============================================
+    // Nếu không phải Date, không phải string, trả về "N/A"
+    return 'N/A';
+  };
+
   const openFeedbackModal = (booking: UserBooking) => {
     setSelectedBooking(booking);
     setRating(5);
@@ -1047,7 +1145,7 @@ const MyBookingsPage = () => {
                     <div className="p-3 bg-gray-50 rounded-lg mb-5">
                       <p className="font-semibold text-gray-900">{selectedBooking.facility.name}</p>
                       <p className="text-sm text-gray-500">
-                        {formatDate(selectedBooking.date)} • {selectedBooking.startTime} - {selectedBooking.endTime}
+                        {formatDate(selectedBooking.date)} • {formatTimeSafe(selectedBooking.startTime)} - {formatTimeSafe(selectedBooking.endTime)}
                       </p>
                     </div>
 
@@ -1182,7 +1280,7 @@ const MyBookingsPage = () => {
                 <div className="p-3 bg-gray-50 rounded-lg mb-5">
                   <p className="font-semibold text-gray-900">{checkInOutModal.booking.facility.name}</p>
                   <p className="text-sm text-gray-500">
-                    {formatDate(checkInOutModal.booking.date)} • {checkInOutModal.booking.startTime} - {checkInOutModal.booking.endTime}
+                    {formatDate(checkInOutModal.booking.date)} • {formatTimeSafe(checkInOutModal.booking.startTime)} - {formatTimeSafe(checkInOutModal.booking.endTime)}
                   </p>
                 </div>
 

@@ -102,42 +102,109 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
   const parseBackendDateTime = (value: string): Date | null => {
     if (!value) return null;
 
-    // dd/MM/yyyy HH:mm:ss or dd/MM/yyyy HH:mm
-    const ddMMyyyyTime = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s*$/);
-    if (ddMMyyyyTime) {
-      const [, day, month, year, hours, minutes, seconds] = ddMMyyyyTime;
-      const date = new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hours),
-        Number(minutes),
-        Number(seconds ?? 0)
-      );
-      return Number.isNaN(date.getTime()) ? null : date;
-    }
+    try {
+      // Format 1: dd/MM/yyyy HH:mm:ss or dd/MM/yyyy HH:mm
+      const ddMMyyyyTime = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s*$/);
+      if (ddMMyyyyTime) {
+        const [, day, month, year, hours, minutes, seconds] = ddMMyyyyTime;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds ?? 0)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
 
-    // dd/MM/yyyy (date only)
-    const ddMMyyyy = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/);
-    if (ddMMyyyy) {
-      const [, day, month, year] = ddMMyyyy;
-      const date = new Date(Number(year), Number(month) - 1, Number(day));
-      return Number.isNaN(date.getTime()) ? null : date;
-    }
+      // Format 2: dd/MM/yyyy (date only)
+      const ddMMyyyy = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/);
+      if (ddMMyyyy) {
+        const [, day, month, year] = ddMMyyyy;
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
 
-    // ISO (or any other format Date can parse)
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+      // Format 3: yyyy-MM-ddTHH:mm:ss (ISO format)
+      const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+      if (isoMatch) {
+        const [, year, month, day, hours, minutes, seconds] = isoMatch;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 4: yyyy-MM-dd HH:mm:ss
+      const yyyyMMddTime = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+      if (yyyyMMddTime) {
+        const [, year, month, day, hours, minutes, seconds] = yyyyMMddTime;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 5: Fallback - try standard Date parsing
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   };
 
   const startDate = parseBackendDateTime(b.startTime);
   const endDate = parseBackendDateTime(b.endTime);
 
   const safeTime = (d: Date | null, fallback: string) => {
-    if (!d) return fallback;
+    if (!d) {
+      // Try to extract time from fallback string if it's in format "dd/MM/yyyy HH:mm:ss"
+      const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
+      return fallback;
+    }
     try {
+      // Check if date is valid
+      if (isNaN(d.getTime())) {
+        // Try to extract time from fallback string
+        const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+        if (timeMatch) {
+          return `${timeMatch[1]}:${timeMatch[2]}`;
+        }
+        return fallback;
+      }
       return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
     } catch {
+      // Try to extract time from fallback string
+      const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
       return fallback;
     }
   };
