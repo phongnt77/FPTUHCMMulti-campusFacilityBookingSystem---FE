@@ -1,6 +1,38 @@
+/**
+ * CampusForm Component - Form tạo/chỉnh sửa Campus
+ * 
+ * Component này hiển thị modal form để:
+ * - Tạo campus mới
+ * - Chỉnh sửa campus hiện có
+ * 
+ * Tính năng:
+ * - Validation email format
+ * - Validation phone number format
+ * - Auto-format phone number input (chỉ cho phép số và ký tự đặc biệt)
+ * - Status selection (Active/Inactive)
+ * - Loading state khi submit
+ * 
+ * Fields:
+ * - name: Tên campus (required)
+ * - address: Địa chỉ (required)
+ * - phoneNumber: Số điện thoại (required)
+ * - email: Email (required, validated)
+ * - status: Trạng thái (Active/Inactive, required)
+ */
+
+// Import icons
 import { Building2, MapPin, Phone, Mail, X, Loader2 } from 'lucide-react'
+// Import types
 import type { Campus, CampusRequest } from '../api/campusApi'
 
+/**
+ * Interface định nghĩa props của CampusForm
+ * 
+ * @property {Campus | null} campus - Campus object nếu đang chỉnh sửa, null nếu tạo mới
+ * @property {() => void} onClose - Callback khi đóng form
+ * @property {(campusData: CampusRequest) => Promise<void>} onSave - Callback khi submit form (async)
+ * @property {boolean} loading - Trạng thái loading (optional, default: false)
+ */
 interface CampusFormProps {
   campus: Campus | null
   onClose: () => void
@@ -8,39 +40,69 @@ interface CampusFormProps {
   loading?: boolean
 }
 
+/**
+ * CampusForm Component Function
+ * 
+ * Modal form component để tạo hoặc chỉnh sửa campus
+ * 
+ * @param {CampusFormProps} props - Props của component
+ * @returns {JSX.Element} - JSX element chứa form modal
+ */
 const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProps) => {
+  // Kiểm tra xem đang edit hay create
+  // isEdit = true nếu campus không null (đang chỉnh sửa)
+  // isEdit = false nếu campus null (đang tạo mới)
   const isEdit = campus !== null
 
+  /**
+   * Function: Handle khi submit form
+   * 
+   * Xử lý submit form:
+   * 1. Prevent default form submission
+   * 2. Lấy data từ form
+   * 3. Validate email và phone number
+   * 4. Gọi onSave callback
+   * 
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event
+   */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    // Lấy data từ form bằng FormData API
     const formData = new FormData(e.currentTarget)
 
+    // Tạo CampusRequest object từ form data
     const campusData: CampusRequest = {
-      name: formData.get('name')?.toString() || '',
+      name: formData.get('name')?.toString() || '', // Lấy name, fallback về empty string
       address: formData.get('address')?.toString() || '',
       phoneNumber: formData.get('phoneNumber')?.toString() || '',
       email: formData.get('email')?.toString() || '',
-      status: (formData.get('status')?.toString() || 'Active') as 'Active' | 'Inactive',
+      status: (formData.get('status')?.toString() || 'Active') as 'Active' | 'Inactive', // Default: 'Active'
     }
 
     // Validate email format
+    // Regex pattern: phải có @ và domain với ít nhất 1 dấu chấm
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(campusData.email)) {
       alert('Email không hợp lệ. Vui lòng nhập email đúng định dạng.')
-      return
+      return // Dừng lại, không submit
     }
 
     // Validate phone number (basic validation)
+    // Chỉ cho phép số và các ký tự: +, -, khoảng trắng, (, )
     const phoneRegex = /^[0-9+\-\s()]+$/
     if (!phoneRegex.test(campusData.phoneNumber)) {
       alert('Số điện thoại không hợp lệ. Vui lòng chỉ nhập số và các ký tự +, -, (, ).')
-      return
+      return // Dừng lại
     }
 
     try {
+      // Gọi onSave callback (async)
       await onSave(campusData)
+      // Nếu thành công, parent component sẽ đóng form
     } catch (error) {
-      // Error đã được xử lý trong parent component
+      // Error đã được xử lý trong parent component (CampusManagement)
+      // Chỉ log để debug
       console.error('Error saving campus:', error)
     }
   }

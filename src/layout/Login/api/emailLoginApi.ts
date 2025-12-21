@@ -1,55 +1,31 @@
 import axios from 'axios';
 import type { AuthUser } from './loginAPI';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance cho email login (không cần token)
-const emailApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import { publicApiClient, handleApiError } from '../../../services/apiClient';
+import type { ApiResponse } from '../../../types/api';
 
 // Interface cho Google login request
 export interface GoogleLoginRequest {
   idToken: string;
 }
 
-// Interface cho Google login response
-export interface GoogleLoginResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-  data: {
-    token: string;
-    userId: string;
-    email: string;
-    fullName: string;
-    roleId: string;
-    isVerified: boolean;
-  } | null;
+// Interface cho Google login data
+export interface GoogleLoginData {
+  token: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  roleId: string;
+  isVerified: boolean;
 }
+
+// Interface cho Google login response
+export interface GoogleLoginResponse extends ApiResponse<GoogleLoginData> {}
 
 // Interface cho verify email response
-export interface VerifyEmailResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-}
+export type VerifyEmailResponse = ApiResponse;
 
 // Interface cho resend verification email response
-export interface ResendVerificationResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-}
+export type ResendVerificationResponse = ApiResponse;
 
 /**
  * Đăng nhập bằng Google OAuth
@@ -70,7 +46,7 @@ export const loginWithGoogle = async (
   email?: string;
 }> => {
   try {
-    const response = await emailApiClient.post<GoogleLoginResponse>('/api/auth/login/google', {
+    const response = await publicApiClient.post<GoogleLoginResponse>('/api/auth/login/google', {
       idToken: idToken,
     } as GoogleLoginRequest);
 
@@ -125,34 +101,10 @@ export const loginWithGoogle = async (
       message: 'Đăng nhập thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    // Xử lý lỗi từ axios
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const result = error.response.data as GoogleLoginResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Đăng nhập thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Đăng nhập thất bại',
-        };
-      }
-      
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    console.error('Google login API error:', error);
+    const errorMessage = handleApiError(error, 'Đăng nhập thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };
@@ -171,7 +123,7 @@ export const verifyEmail = async (
   code: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await emailApiClient.post<VerifyEmailResponse>(
+    const response = await publicApiClient.post<VerifyEmailResponse>(
       `/api/auth/verify-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`
     );
 
@@ -196,33 +148,10 @@ export const verifyEmail = async (
       message: 'Xác thực email thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const result = error.response.data as VerifyEmailResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Xác thực email thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Xác thực email thất bại',
-        };
-      }
-      
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    console.error('Verify email API error:', error);
+    const errorMessage = handleApiError(error, 'Xác thực email thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };
@@ -239,7 +168,7 @@ export const resendVerificationEmail = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await emailApiClient.post<ResendVerificationResponse>(
+    const response = await publicApiClient.post<ResendVerificationResponse>(
       `/api/auth/resend-verification-email?email=${encodeURIComponent(email)}`
     );
 
@@ -264,54 +193,19 @@ export const resendVerificationEmail = async (
       message: 'Gửi lại mã thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const result = error.response.data as ResendVerificationResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Gửi lại mã thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Gửi lại mã thất bại',
-        };
-      }
-      
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    console.error('Resend verification email API error:', error);
+    const errorMessage = handleApiError(error, 'Gửi lại mã thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };
 
 // Interface cho forgot password response
-export interface ForgotPasswordResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-}
+export type ForgotPasswordResponse = ApiResponse;
 
 // Interface cho reset password response
-export interface ResetPasswordResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  } | null;
-}
+export type ResetPasswordResponse = ApiResponse;
 
 /**
  * Yêu cầu đặt lại mật khẩu - gửi mã 6 số qua email
@@ -326,7 +220,7 @@ export const forgotPassword = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await emailApiClient.post<ForgotPasswordResponse>(
+    const response = await publicApiClient.post<ForgotPasswordResponse>(
       `/api/auth/forgot-password?email=${encodeURIComponent(email)}`
     );
 
@@ -351,33 +245,10 @@ export const forgotPassword = async (
       message: 'Gửi mã thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const result = error.response.data as ForgotPasswordResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Gửi mã thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Gửi mã thất bại',
-        };
-      }
-      
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    console.error('Forgot password API error:', error);
+    const errorMessage = handleApiError(error, 'Gửi mã thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };
@@ -398,7 +269,7 @@ export const resetPassword = async (
   newPassword: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await emailApiClient.post<ResetPasswordResponse>(
+    const response = await publicApiClient.post<ResetPasswordResponse>(
       `/api/auth/reset-password?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&newPassword=${encodeURIComponent(newPassword)}`
     );
 
@@ -423,33 +294,10 @@ export const resetPassword = async (
       message: 'Đặt lại mật khẩu thất bại. Vui lòng thử lại.',
     };
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response) {
-        const result = error.response.data as ResetPasswordResponse;
-        if (result?.error) {
-          return {
-            success: false,
-            message: result.error.message || 'Đặt lại mật khẩu thất bại',
-          };
-        }
-        return {
-          success: false,
-          message: error.response.statusText || 'Đặt lại mật khẩu thất bại',
-        };
-      }
-      
-      if (error.request) {
-        return {
-          success: false,
-          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
-        };
-      }
-    }
-
-    console.error('Reset password API error:', error);
+    const errorMessage = handleApiError(error, 'Đặt lại mật khẩu thất bại');
     return {
       success: false,
-      message: 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.',
+      message: errorMessage.message,
     };
   }
 };

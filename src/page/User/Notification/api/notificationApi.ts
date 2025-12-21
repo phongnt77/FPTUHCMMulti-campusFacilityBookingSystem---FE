@@ -1,29 +1,5 @@
-import axios from 'axios';
-import { getToken } from '../../../../utils/auth';
-
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5252';
-
-// Tạo axios instance với baseURL
-const notificationApiClient = axios.create({
-  baseURL: baseURL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Thêm request interceptor để tự động thêm token vào header
-notificationApiClient.interceptors.request.use(
-  (config) => {
-    const token = getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import { apiClient, handleApiError } from '../../../../services/apiClient';
+import type { ApiResponse, PaginatedResponse } from '../../../../types/api';
 
 // Interface cho Notification từ API response
 export interface Notification {
@@ -40,38 +16,13 @@ export interface Notification {
 }
 
 // Interface cho API Response
-export interface NotificationResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  };
-  data: Notification[];
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-  };
-}
+export type NotificationResponse = PaginatedResponse<Notification>;
 
 // Interface cho Unread Count Response
-export interface UnreadCountResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  };
-  data: number;
-}
+export type UnreadCountResponse = ApiResponse<number>;
 
 // Interface cho Standard Response
-export interface StandardResponse {
-  success: boolean;
-  error: {
-    code: number;
-    message: string;
-  };
-}
+export type StandardResponse = ApiResponse;
 
 // Interface cho Filter Parameters
 export interface NotificationFilters {
@@ -86,61 +37,85 @@ export interface NotificationFilters {
  * Lấy danh sách thông báo với filtering và pagination
  */
 export const getNotifications = async (filters?: NotificationFilters): Promise<NotificationResponse> => {
-  const params = new URLSearchParams();
-  
-  if (filters?.userId) params.append('UserId', filters.userId);
-  if (filters?.type) params.append('Type', filters.type);
-  if (filters?.status) params.append('Status', filters.status);
-  if (filters?.page !== undefined) params.append('Page', filters.page.toString());
-  if (filters?.limit !== undefined) params.append('Limit', filters.limit.toString());
+  try {
+    const params = new URLSearchParams();
+    
+    if (filters?.userId) params.append('UserId', filters.userId);
+    if (filters?.type) params.append('Type', filters.type);
+    if (filters?.status) params.append('Status', filters.status);
+    if (filters?.page !== undefined) params.append('Page', filters.page.toString());
+    if (filters?.limit !== undefined) params.append('Limit', filters.limit.toString());
 
-  const response = await notificationApiClient.get<NotificationResponse>(
-    `/api/notifications${params.toString() ? `?${params.toString()}` : ''}`
-  );
-  return response.data;
+    const response = await apiClient.get<NotificationResponse>(
+      `/api/notifications${params.toString() ? `?${params.toString()}` : ''}`
+    );
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy danh sách thông báo');
+  }
 };
 
 /**
  * Lấy tất cả thông báo chưa đọc của user hiện tại
  */
 export const getUnreadNotifications = async (): Promise<NotificationResponse> => {
-  const response = await notificationApiClient.get<NotificationResponse>('/api/notifications/unread');
-  return response.data;
+  try {
+    const response = await apiClient.get<NotificationResponse>('/api/notifications/unread');
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy thông báo chưa đọc');
+  }
 };
 
 /**
  * Lấy số lượng thông báo chưa đọc của user hiện tại
  */
 export const getUnreadCount = async (): Promise<UnreadCountResponse> => {
-  const response = await notificationApiClient.get<UnreadCountResponse>('/api/notifications/unread/count');
-  return response.data;
+  try {
+    const response = await apiClient.get<UnreadCountResponse>('/api/notifications/unread/count');
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi lấy số lượng thông báo chưa đọc');
+  }
 };
 
 /**
  * Đánh dấu thông báo là đã đọc
  */
 export const markNotificationAsRead = async (notificationId: string): Promise<StandardResponse> => {
-  const response = await notificationApiClient.put<StandardResponse>(
-    `/api/notifications/${notificationId}/read`
-  );
-  return response.data;
+  try {
+    const response = await apiClient.put<StandardResponse>(
+      `/api/notifications/${notificationId}/read`
+    );
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi đánh dấu thông báo đã đọc');
+  }
 };
 
 /**
  * Đánh dấu tất cả thông báo của user hiện tại là đã đọc
  */
 export const markAllNotificationsAsRead = async (): Promise<StandardResponse> => {
-  const response = await notificationApiClient.put<StandardResponse>('/api/notifications/read-all');
-  return response.data;
+  try {
+    const response = await apiClient.put<StandardResponse>('/api/notifications/read-all');
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi đánh dấu tất cả thông báo đã đọc');
+  }
 };
 
 /**
  * Xóa thông báo
  */
 export const deleteNotification = async (notificationId: string): Promise<StandardResponse> => {
-  const response = await notificationApiClient.delete<StandardResponse>(
-    `/api/notifications/${notificationId}`
-  );
-  return response.data;
+  try {
+    const response = await apiClient.delete<StandardResponse>(
+      `/api/notifications/${notificationId}`
+    );
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi xóa thông báo');
+  }
 };
 
