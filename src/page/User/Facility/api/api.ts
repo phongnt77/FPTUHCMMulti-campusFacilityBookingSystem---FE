@@ -2,12 +2,13 @@ import { API_BASE_URL, API_ENDPOINTS, apiFetch, buildUrl } from '../../../../ser
 import type { Facility, Campus, FacilityType } from '../../../../types';
 
 // Backend response types
-interface CampusResponse {
+export interface CampusResponse {
   campusId: string;
   name: string;
-  address: string;
-  phoneNumber: string;
-  email: string;
+  imageUrl?: string;
+  address?: string;
+  phoneNumber?: string;
+  email?: string;
   status: string;
 }
 
@@ -67,6 +68,58 @@ const mapFacilityType = (typeName: string): FacilityType => {
     'Sport Facility': 'Sport Facility',
   };
   return typeMap[typeName] || 'Classroom';
+};
+
+// Map campusId to Campus type
+const mapCampusIdToCampus = (campusId: string): Campus => {
+  // C0001 = HCM, C0002 = NVH
+  if (campusId === 'C0001') return 'HCM';
+  if (campusId === 'C0002') return 'NVH';
+  // Fallback: check if name contains NVH
+  return 'HCM'; // Default to HCM
+};
+
+// Map CampusResponse to CampusInfo
+export interface CampusInfo {
+  id: Campus;
+  name: string;
+  fullName: string;
+  description: string;
+  gradient: string;
+  imageUrl: string;
+  imageAlt: string;
+}
+
+export const mapCampusResponse = (c: CampusResponse): CampusInfo => {
+  const campusId = mapCampusIdToCampus(c.campusId);
+  
+  // Default values based on campus
+  const defaults: Record<Campus, { gradient: string; imageUrl: string; description: string; fullName: string }> = {
+    HCM: {
+      gradient: 'from-orange-500 to-amber-600',
+      imageUrl: '/images/HCM.webp',
+      description: 'Campus chính tại Quận 9 với đầy đủ cơ sở vật chất hiện đại',
+      fullName: 'FPT University HCMC - Quận 9'
+    },
+    NVH: {
+      gradient: 'from-violet-500 to-purple-600',
+      imageUrl: '/images/nvh.jpg',
+      description: 'Campus NVH với không gian học tập đa dạng',
+      fullName: 'FPT University NVH'
+    }
+  };
+  
+  const defaultValues = defaults[campusId];
+  
+  return {
+    id: campusId,
+    name: c.name || (campusId === 'HCM' ? 'HCM Campus' : 'NVH Campus'),
+    fullName: c.address || defaultValues.fullName,
+    description: defaultValues.description,
+    gradient: defaultValues.gradient,
+    imageUrl: c.imageUrl || defaultValues.imageUrl,
+    imageAlt: `FPTU ${c.name || campusId} Campus`
+  };
 };
 
 export const userFacilityApi = {
@@ -144,6 +197,25 @@ export const userFacilityApi = {
       return [];
     } catch (error) {
       console.error('Error fetching campuses:', error);
+      return [];
+    }
+  },
+
+  // Get all campuses mapped to CampusInfo - API ONLY
+  getCampusesInfo: async (): Promise<CampusInfo[]> => {
+    try {
+      const url = `${API_BASE_URL}${API_ENDPOINTS.CAMPUS.GET_ALL}`;
+      const response = await apiFetch<CampusResponse[]>(url);
+      
+      if (response.success && response.data) {
+        return response.data
+          .filter(c => c.status === 'Active') // Only return active campuses
+          .map(mapCampusResponse);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching campuses info:', error);
       return [];
     }
   },

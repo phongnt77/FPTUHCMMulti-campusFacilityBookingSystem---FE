@@ -1,8 +1,8 @@
 import { createContext } from 'react';
-import { type User } from '../data/userMockData';
+import { type AuthUser } from '../types';
 
 export interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; message: string }>;

@@ -2,50 +2,34 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Users, Clock, Search, Building2, FlaskConical, Trophy, ChevronRight, Sparkles } from 'lucide-react';
 import type { Facility, Campus, FacilityType } from '../../../types';
-import { userFacilityApi } from './api/api';
-
-interface CampusInfo {
-  id: Campus;
-  name: string;
-  fullName: string;
-  description: string;
-  gradient: string;
-  imageUrl: string;
-  imageAlt: string;
-}
-
-const campuses: CampusInfo[] = [
-  {
-    id: 'HCM',
-    name: 'HCM Campus',
-    fullName: 'FPT University HCMC - Quận 9',
-    description: 'Campus chính tại Quận 9 với đầy đủ cơ sở vật chất hiện đại',
-    gradient: 'from-orange-500 to-amber-600',
-    imageUrl: '/images/HCM.webp',
-    imageAlt: 'FPTU HCM Campus'
-  },
-  {
-    id: 'NVH',
-    name: 'NVH Campus', 
-    fullName: 'FPT University NVH',
-    description: 'Campus NVH với không gian học tập đa dạng',
-    gradient: 'from-violet-500 to-purple-600',
-    imageUrl: '/images/nvh.jpg',
-    imageAlt: 'FPTU Nguyễn Văn Huyên Campus'
-  }
-];
+import { userFacilityApi, type CampusInfo } from './api/api';
 
 const FacilityPage = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(false);
+  const [campuses, setCampuses] = useState<CampusInfo[]>([]);
+  const [campusesLoading, setCampusesLoading] = useState(true);
   const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
   const [selectedType, setSelectedType] = useState<FacilityType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [campusCounts, setCampusCounts] = useState<{ HCM: number; NVH: number }>({ HCM: 0, NVH: 0 });
 
   useEffect(() => {
+    loadCampuses();
     loadCampusCounts();
   }, []);
+
+  const loadCampuses = async () => {
+    setCampusesLoading(true);
+    try {
+      const data = await userFacilityApi.getCampusesInfo();
+      setCampuses(data);
+    } catch (error) {
+      console.error('Error loading campuses:', error);
+    } finally {
+      setCampusesLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedCampus) {
@@ -193,8 +177,35 @@ const FacilityPage = () => {
 
         {/* Campus Selection Cards */}
         <div className="max-w-5xl mx-auto px-4 -mt-12 pb-16">
-          <div className="grid md:grid-cols-2 gap-6">
-            {campuses.map((campus) => (
+          {campusesLoading ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <div key={i} className="bg-white rounded-2xl shadow-lg shadow-gray-200/50 overflow-hidden animate-pulse">
+                  <div className="h-36 bg-gray-200" />
+                  <div className="p-6 space-y-4">
+                    <div className="h-6 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-4 bg-gray-200 rounded w-full" />
+                    <div className="h-4 bg-gray-200 rounded w-2/3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : campuses.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Không có campus nào
+              </h3>
+              <p className="text-gray-500 text-sm">
+                Hiện tại không có campus nào khả dụng
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              {campuses.map((campus) => (
               <button
                 key={campus.id}
                 onClick={() => handleCampusSelect(campus.id)}
@@ -245,8 +256,9 @@ const FacilityPage = () => {
                   </div>
                 </div>
               </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Info Section */}
           <div className="mt-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-8 border border-slate-200/50">

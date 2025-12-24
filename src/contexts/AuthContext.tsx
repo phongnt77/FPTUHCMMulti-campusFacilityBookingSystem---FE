@@ -1,6 +1,6 @@
 import React, { useState, useEffect, type ReactNode } from 'react';
-import { type User } from '../data/userMockData';
-import { type AuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
+import { type AuthUser as LoginAuthUser, logoutAPI } from '../layout/Login/api/loginAPI';
+import { type AuthUser } from '../types';
 import { clearAuth } from '../utils/auth';
 import { AuthContext, type AuthContextType } from './authContext';
 
@@ -9,11 +9,11 @@ interface AuthProviderProps {
 }
 
 // Map roleId từ API sang role name
-const mapRoleIdToRole = (roleId: string): User['role'] => {
+const mapRoleIdToRole = (roleId: string): AuthUser['role'] => {
   // Mapping từ roleId trong database sang role trong code
   // RL0001: Student, RL0002: Lecturer, RL0003: Facility_Admin -> Facility_Manager
   // Có thể có thêm roleId khác cho Admin (ví dụ: RL0004) nếu cần
-  const roleMap: Record<string, User['role']> = {
+  const roleMap: Record<string, AuthUser['role']> = {
     'RL0001': 'Student',
     'RL0002': 'Lecturer',
     'RL0003': 'Facility_Manager', // Facility_Admin trong DB được map sang Facility_Manager
@@ -24,7 +24,7 @@ const mapRoleIdToRole = (roleId: string): User['role'] => {
 };
 
 // Helper function to get initial user from sessionStorage (riêng biệt cho mỗi tab)
-const getInitialUser = (): User | null => {
+const getInitialUser = (): AuthUser | null => {
   try {
     const token = sessionStorage.getItem('auth_token');
     const savedUser = sessionStorage.getItem('auth_user');
@@ -33,15 +33,15 @@ const getInitialUser = (): User | null => {
       return null;
     }
 
-    const authUser: AuthUser = JSON.parse(savedUser);
+    const loginAuthUser: LoginAuthUser = JSON.parse(savedUser);
     
-    // Convert AuthUser từ API sang User interface
-    const user: User = {
-      user_id: authUser.userId,
-      email: authUser.email,
-      full_name: authUser.fullName,
-      user_name: authUser.email.split('@')[0], // Extract username from email
-      role: mapRoleIdToRole(authUser.roleId),
+    // Convert LoginAuthUser từ API sang AuthUser interface
+    const user: AuthUser = {
+      user_id: loginAuthUser.userId,
+      email: loginAuthUser.email,
+      full_name: loginAuthUser.fullName,
+      user_name: loginAuthUser.email.split('@')[0], // Extract username from email
+      role: mapRoleIdToRole(loginAuthUser.roleId),
       campus_id: 1, // Default, có thể cần lấy từ API sau
       status: 'Active',
       avatar_url: undefined,
@@ -59,7 +59,7 @@ const getInitialUser = (): User | null => {
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(getInitialUser);
+  const [user, setUser] = useState<AuthUser | null>(getInitialUser);
   const [isLoading] = useState(false);
 
   // Listen for custom events (when login/logout happens in same tab)

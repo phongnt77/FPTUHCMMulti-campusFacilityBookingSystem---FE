@@ -1,9 +1,9 @@
-import { type AuthUser } from '../layout/Login/api/loginAPI';
-import { type User } from '../data/userMockData';
+import { type AuthUser as LoginAuthUser } from '../layout/Login/api/loginAPI';
+import { type AuthUser } from '../types';
 
 // Map roleId từ API sang role name
-const mapRoleIdToRole = (roleId: string): User['role'] => {
-  const roleMap: Record<string, User['role']> = {
+const mapRoleIdToRole = (roleId: string): AuthUser['role'] => {
+  const roleMap: Record<string, AuthUser['role']> = {
     'RL0001': 'Student',
     'RL0002': 'Lecturer',
     'RL0003': 'Facility_Manager',
@@ -13,9 +13,9 @@ const mapRoleIdToRole = (roleId: string): User['role'] => {
 
 /**
  * Lấy thông tin user từ sessionStorage (riêng biệt cho mỗi tab)
- * @returns User object hoặc null nếu chưa đăng nhập
+ * @returns AuthUser object hoặc null nếu chưa đăng nhập
  */
-export const getCurrentUser = (): User | null => {
+export const getCurrentUser = (): AuthUser | null => {
   try {
     const token = sessionStorage.getItem('auth_token');
     const savedUser = sessionStorage.getItem('auth_user');
@@ -25,24 +25,24 @@ export const getCurrentUser = (): User | null => {
       return null;
     }
 
-    const authUser: AuthUser = JSON.parse(savedUser);
-    console.log('getCurrentUser: AuthUser from sessionStorage:', authUser);
+    const loginAuthUser: LoginAuthUser = JSON.parse(savedUser);
+    console.log('getCurrentUser: AuthUser from sessionStorage:', loginAuthUser);
     
-    // Convert AuthUser từ API sang User interface
+    // Convert LoginAuthUser từ API sang AuthUser interface
     // Note: avatarUrl và phoneNumber có thể được thêm vào authUser sau khi user cập nhật profile
-    const user: User = {
-      user_id: authUser.userId,
-      email: authUser.email,
-      full_name: authUser.fullName,
-      user_name: authUser.email.split('@')[0],
-      role: mapRoleIdToRole(authUser.roleId),
+    const user: AuthUser = {
+      user_id: loginAuthUser.userId,
+      email: loginAuthUser.email,
+      full_name: loginAuthUser.fullName,
+      user_name: loginAuthUser.email.split('@')[0],
+      role: mapRoleIdToRole(loginAuthUser.roleId),
       campus_id: 1,
       status: 'Active',
-      avatar_url: (authUser as any).avatarUrl || undefined, // Read from sessionStorage if available
+      avatar_url: (loginAuthUser as any).avatarUrl || undefined, // Read from sessionStorage if available
       created_at: new Date().toISOString(),
     };
 
-    console.log('getCurrentUser: Mapped user role:', user.role, 'from roleId:', authUser.roleId);
+    console.log('getCurrentUser: Mapped user role:', user.role, 'from roleId:', loginAuthUser.roleId);
     return user;
   } catch (error) {
     console.error('Error parsing auth user:', error);
@@ -72,14 +72,14 @@ export const getToken = (): string | null => {
 };
 
 /**
- * Lấy AuthUser từ sessionStorage
- * @returns AuthUser object hoặc null
+ * Lấy LoginAuthUser từ sessionStorage
+ * @returns LoginAuthUser object hoặc null
  */
-export const getAuthUser = (): AuthUser | null => {
+export const getAuthUser = (): LoginAuthUser | null => {
   try {
     const savedUser = sessionStorage.getItem('auth_user');
     if (!savedUser) return null;
-    return JSON.parse(savedUser) as AuthUser;
+    return JSON.parse(savedUser) as LoginAuthUser;
   } catch {
     return null;
   }
@@ -90,7 +90,7 @@ export const getAuthUser = (): AuthUser | null => {
  * @param allowedRoles - Danh sách roles được phép
  * @returns true nếu user có role trong allowedRoles
  */
-export const hasRole = (allowedRoles: User['role'][]): boolean => {
+export const hasRole = (allowedRoles: AuthUser['role'][]): boolean => {
   const user = getCurrentUser();
   if (!user) return false;
   return allowedRoles.includes(user.role);

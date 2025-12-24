@@ -11,6 +11,7 @@ export type FacilityType =
 
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
 
+// User type for admin/booking context
 export interface User {
   id: string;
   name: string;
@@ -18,6 +19,21 @@ export interface User {
   role: 'student' | 'teacher' | 'admin';
   studentId?: string;
   employeeId?: string;
+}
+
+// User type for auth context (based on database schema)
+export interface AuthUser {
+  user_id: string;
+  email: string;
+  full_name: string;
+  phone_number?: string;
+  user_name: string;
+  role: 'Student' | 'Lecturer' | 'Admin' | 'Facility_Admin' | 'Facility_Manager';
+  campus_id: number;
+  status: 'Active' | 'Inactive';
+  avatar_url?: string;
+  last_login?: string;
+  created_at: string;
 }
 
 export interface Facility {
