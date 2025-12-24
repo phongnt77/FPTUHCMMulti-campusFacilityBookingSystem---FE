@@ -11,7 +11,9 @@ export interface SystemSettings {
 }
 
 // Interface cho API Response
-export interface SystemSettingsResponse extends ApiResponse<SystemSettings> {}
+export interface SystemSettingsResponse extends ApiResponse<SystemSettings> {
+  data: SystemSettings;
+}
 
 // Interface cho Update Request
 export interface UpdateSystemSettingsRequest {

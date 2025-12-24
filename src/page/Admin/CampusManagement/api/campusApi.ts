@@ -48,31 +48,96 @@ export interface GetCampusesParams {
 
 /**
  * Lấy danh sách campuses với pagination (Admin view)
+ * 
+ * Giải thích câu 12: "thông qua backend, front-end chỉ gọi api"
+ * 
+ * FRONTEND CHỈ GỌI API - KHÔNG CÓ BUSINESS LOGIC:
+ * 
+ * Function này CHỈ làm nhiệm vụ:
+ * 1. Format query parameters (page, limit)
+ * 2. Gửi HTTP GET request đến backend
+ * 3. Nhận response từ backend
+ * 4. Trả về data (pass-through)
+ * 
+ * KHÔNG làm:
+ * - ❌ Query database
+ * - ❌ Apply pagination logic (skip, take)
+ * - ❌ Filter, sort data
+ * - ❌ Check permissions (backend làm)
+ * - ❌ Format response
+ * 
+ * BACKEND XỬ LÝ TẤT CẢ LOGIC:
+ * 
+ * Khi backend nhận GET /api/campuses/paged?Page=1&Limit=10:
+ * 1. Verify authentication:
+ *    - Extract token từ Authorization header
+ *    - Verify JWT token signature và expiration
+ *    - Extract userId và roleId từ token
+ * 
+ * 2. Check permissions:
+ *    - Verify user có quyền truy cập endpoint này không
+ *    - Role-based access control (RBAC)
+ * 
+ * 3. Query database:
+ *    - SELECT * FROM Campuses 
+ *    - WHERE Status = 'Active' (hoặc filter khác)
+ *    - ORDER BY CreatedAt DESC
+ *    - LIMIT 10 OFFSET 0 (pagination)
+ *    - COUNT(*) để tính total items
+ * 
+ * 4. Format response:
+ *    - Map database entities sang DTOs
+ *    - Format dates, status, etc.
+ *    - Tạo pagination object: { page, limit, total }
+ *    - Wrap trong ApiResponse: { success, data, pagination }
+ * 
+ * 5. Trả về HTTP response:
+ *    - Status 200 với JSON body
+ *    - Hoặc status 401/403/500 với error message
+ * 
+ * FLOW HOẠT ĐỘNG:
+ * 1. Frontend: Gọi getCampuses({ page: 1, limit: 10 })
+ * 2. Frontend: Format query params: { Page: 1, Limit: 10 }
+ * 3. Frontend: Gửi GET /api/campuses/paged?Page=1&Limit=10 với Authorization header
+ * 4. Backend: Nhận request, verify token, check permissions
+ * 5. Backend: Query database với pagination
+ * 6. Backend: Format response: { success: true, data: [...], pagination: {...} }
+ * 7. Frontend: Nhận response, hiển thị data lên UI
+ * 
  * @param params - Query parameters: page, limit
  * @returns Promise với danh sách campuses và pagination info
  * @description
  * - GET /api/campuses/paged
  * - Có pagination (page, limit)
- * - Tất cả user đã đăng nhập có thể truy cập
+ * - Tất cả user đã đăng nhập có thể truy cập (backend verify)
  */
 export const getCampuses = async (params?: GetCampusesParams): Promise<CampusesResponse> => {
   try {
+    // FRONTEND: Chỉ format query parameters
+    // Không có logic phức tạp, chỉ chuẩn bị data để gửi
     const queryParams: Record<string, number> = {};
     
     if (params?.page !== undefined) {
-      queryParams.Page = params.page;
+      queryParams.Page = params.page; // Backend expect "Page" (capital P)
     }
     
     if (params?.limit !== undefined) {
-      queryParams.Limit = params.limit;
+      queryParams.Limit = params.limit; // Backend expect "Limit" (capital L)
     }
 
+    // FRONTEND: Gửi HTTP GET request đến backend
+    // apiClient tự động thêm Authorization header (từ interceptor)
+    // Backend sẽ xử lý tất cả logic: verify token, query DB, pagination, format response
     const response = await apiClient.get<CampusesResponse>('/api/campuses/paged', {
       params: queryParams,
     });
 
+    // FRONTEND: Chỉ trả về data từ response
+    // Không xử lý, không transform, chỉ pass through
     return response.data;
   } catch (error) {
+    // FRONTEND: Chỉ xử lý error để hiển thị message cho user
+    // Logic xử lý error thực sự đã được backend làm (trả về error response)
     throw handleApiError(error, 'Lỗi khi lấy danh sách campuses');
   }
 };

@@ -44,38 +44,76 @@ export interface LogoutResponse {
 }
 
 /**
- * Gọi API đăng nhập
+ * Gọi API đăng nhập bằng email/password
+ * 
+ * Giải thích câu 10: "người dùng nhập username, password rồi nhấn login hoặc nhấp vào login google, 
+ * token được lưu lại ở sessionStorage và được sử dụng để authentication"
+ * 
+ * FLOW ĐĂNG NHẬP BẰNG EMAIL/PASSWORD:
+ * 
+ * 1. User nhập email/username và password → nhấn nút "Đăng nhập"
+ * 2. Function này được gọi với emailOrUsername và password
+ * 3. Gửi POST request đến /api/auth/login với credentials
+ * 4. Server verify credentials và trả về:
+ *    - success: true/false
+ *    - data: { token, userId, email, fullName, roleId, isVerified }
+ *    - error: null hoặc error object
+ * 
+ * 5. Nếu thành công (success = true và có data):
+ *    - Extract token từ result.data.token
+ *    - Tạo AuthUser object chứa thông tin user
+ *    - Lưu vào sessionStorage:
+ *      * 'auth_token': JWT token để authenticate các request sau
+ *      * 'auth_user': JSON string của AuthUser object (chứa userId, email, fullName, roleId)
+ *      * Xóa 'is_google_login' flag (vì đăng nhập bằng email/password)
+ * 
+ * 6. Token trong sessionStorage sẽ được sử dụng bởi:
+ *    - apiClient interceptor: Tự động thêm vào Authorization header mỗi request
+ *    - getToken() function: Lấy token để verify authentication
+ *    - getCurrentUser() function: Lấy thông tin user hiện tại
+ * 
+ * TẠI SAO DÙNG sessionStorage THAY VÌ localStorage?
+ * - sessionStorage: Chỉ tồn tại trong tab hiện tại, tự động xóa khi đóng tab
+ * - localStorage: Tồn tại vĩnh viễn, phải xóa thủ công
+ * - Security: sessionStorage an toàn hơn (tự động clear khi đóng tab)
+ * - Multi-tab: Mỗi tab có session riêng (có thể đăng nhập khác account ở tab khác)
+ * 
  * @param emailOrUsername - Email hoặc username của người dùng
  * @param password - Mật khẩu
- * @returns Promise với kết quả đăng nhập
+ * @returns Promise với kết quả đăng nhập và AuthUser object nếu thành công
  */
 export const loginAPI = async (
   emailOrUsername: string,
   password: string
 ): Promise<{ success: boolean; message: string; data?: AuthUser }> => {
   try {
+    // Gửi POST request đến /api/auth/login
+    // Sử dụng publicApiClient vì đây là endpoint không cần authentication
     const response = await publicApiClient.post<LoginResponse>('/api/auth/login', {
-      emailOrUsername: emailOrUsername.trim(),
+      emailOrUsername: emailOrUsername.trim(), // Trim whitespace
       password: password,
     } as LoginRequest);
 
     const result = response.data;
 
-    // Xử lý response thành công (200)
+    // Xử lý response thành công (HTTP 200 và success = true)
     if (result.success && result.data) {
+      // Tạo AuthUser object từ response data
       const authUser: AuthUser = {
-        token: result.data.token,
-        userId: result.data.userId,
-        email: result.data.email,
-        fullName: result.data.fullName,
-        roleId: result.data.roleId,
-        isVerified: result.data.isVerified,
+        token: result.data.token,           // JWT token từ server
+        userId: result.data.userId,         // User ID
+        email: result.data.email,           // Email
+        fullName: result.data.fullName,     // Tên đầy đủ
+        roleId: result.data.roleId,         // Role ID (RL0001, RL0002, RL0003)
+        isVerified: result.data.isVerified, // Email đã verify chưa
       };
 
-      // Lưu vào sessionStorage (riêng biệt cho mỗi tab)
-      sessionStorage.setItem('auth_token', authUser.token);
-      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
-      // Xóa flag Google login nếu có (user đăng nhập bằng email/password)
+      // LƯU TOKEN VÀ USER INFO VÀO sessionStorage
+      // Đây là bước quan trọng để lưu authentication state
+      sessionStorage.setItem('auth_token', authUser.token);  // Lưu JWT token
+      sessionStorage.setItem('auth_user', JSON.stringify(authUser)); // Lưu user info dạng JSON string
+      
+      // Xóa flag Google login nếu có (user đăng nhập bằng email/password, không phải Google)
       sessionStorage.removeItem('is_google_login');
 
       return {

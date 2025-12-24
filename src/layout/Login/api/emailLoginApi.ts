@@ -1,4 +1,3 @@
-import axios from 'axios';
 import type { AuthUser } from './loginAPI';
 import { publicApiClient, handleApiError } from '../../../services/apiClient';
 import type { ApiResponse } from '../../../types/api';
@@ -19,22 +18,114 @@ export interface GoogleLoginData {
 }
 
 // Interface cho Google login response
-export interface GoogleLoginResponse extends ApiResponse<GoogleLoginData> {}
+export interface GoogleLoginResponse extends ApiResponse<GoogleLoginData> {
+  data: GoogleLoginData;
+}
 
 // Interface cho verify email response
-export type VerifyEmailResponse = ApiResponse;
+export interface VerifyEmailResponse extends ApiResponse {
+  success: boolean;
+}
 
 // Interface cho resend verification email response
-export type ResendVerificationResponse = ApiResponse;
+export interface ResendVerificationResponse extends ApiResponse {
+  success: boolean;
+}
 
 /**
  * Đăng nhập bằng Google OAuth
- * @param idToken - Google ID Token từ Google OAuth
+ * 
+ * Giải thích câu 12: "thông qua backend, front-end chỉ gọi api"
+ * Giải thích: Google OAuth được tích hợp như thế nào? Token được xử lý ra sao?
+ * 
+ * FRONTEND CHỈ GỌI API - KHÔNG CÓ BUSINESS LOGIC:
+ * 
+ * Function này CHỈ làm nhiệm vụ:
+ * 1. Format request body với idToken
+ * 2. Gửi HTTP POST request đến backend
+ * 3. Nhận response từ backend
+ * 4. Lưu token vào sessionStorage (nếu thành công)
+ * 
+ * KHÔNG làm:
+ * - ❌ Verify Google token (không có secret key)
+ * - ❌ Query database
+ * - ❌ Tạo user
+ * - ❌ Phân role
+ * - ❌ Tạo JWT token
+ * 
+ * BACKEND XỬ LÝ TẤT CẢ LOGIC:
+ * 
+ * Khi backend nhận POST /api/auth/login/google với idToken:
+ * 1. Verify idToken với Google:
+ *    - Sử dụng Google ClientID và secret
+ *    - Verify signature, expiration, audience
+ *    - Extract user info từ token (email, name, picture)
+ * 
+ * 2. Check database:
+ *    - Query: SELECT * FROM Users WHERE Email = @email
+ *    - Nếu chưa tồn tại: Tạo user mới, gửi mã verify email
+ *    - Nếu đã tồn tại: Lấy thông tin user
+ * 
+ * 3. Phân role dựa trên email domain:
+ *    - @fpt.edu.vn → Student (RL0001)
+ *    - @fe.edu.vn → Lecturer (RL0002)
+ *    - Logic này ở backend, frontend không biết
+ * 
+ * 4. Tạo JWT token riêng của hệ thống:
+ *    - Token này KHÁC với Google idToken
+ *    - Chứa userId, roleId, và các claims khác
+ *    - Có expiration time do hệ thống kiểm soát
+ * 
+ * 5. Trả về response:
+ *    - { success: true, data: { token, userId, email, ... } }
+ *    - Token này là JWT token của hệ thống, không phải Google token
+ * 
+ * FLOW ĐĂNG NHẬP BẰNG GOOGLE OAUTH:
+ * 
+ * 1. User nhấp vào nút "Đăng nhập bằng Google"
+ * 2. Google OAuth popup hiển thị, user chọn account và authorize
+ * 3. Google trả về idToken (JWT token từ Google) → Frontend nhận
+ * 4. Frontend gọi function này với idToken
+ * 5. Frontend gửi POST /api/auth/login/google với idToken
+ * 6. Backend verify idToken với Google, tạo/lấy user, và trả về:
+ *    - success: true/false
+ *    - data: { token, userId, email, fullName, roleId, isVerified }
+ *    - error: null hoặc error object
+ * 
+ * 7. Nếu thành công (success = true và có data):
+ *    a. Nếu user CHƯA verify email (isVerified = false):
+ *       - KHÔNG lưu token vào sessionStorage
+ *       - Trả về needsVerification: true
+ *       - Hiển thị form verify email với mã 6 số
+ *       - User nhập mã → verifyEmail() → sau đó mới lưu token
+ * 
+ *    b. Nếu user ĐÃ verify email (isVerified = true):
+ *       - Extract token từ result.data.token (JWT token từ backend)
+ *       - Tạo AuthUser object
+ *       - Lưu vào sessionStorage:
+ *         * 'auth_token': JWT token từ server (KHÔNG phải Google token)
+ *         * 'auth_user': JSON string của AuthUser
+ *         * 'is_google_login': 'true' (flag để biết đăng nhập bằng Google)
+ * 
+ * 8. Token trong sessionStorage được sử dụng giống như email/password login:
+ *    - apiClient interceptor tự động thêm vào Authorization header
+ *    - getToken() lấy token để verify
+ *    - getCurrentUser() lấy thông tin user
+ * 
+ * TẠI SAO KHÔNG DÙNG GOOGLE TOKEN TRỰC TIẾP?
+ * - Google idToken chỉ dùng để verify identity với Google (một lần)
+ * - Hệ thống cần token riêng để:
+ *   * Kiểm soát expiration time (có thể set 1 ngày, 1 tuần, etc.)
+ *   * Thêm custom claims (role, permissions, campusId)
+ *   * Revoke token khi cần (logout, ban user)
+ *   * Không phụ thuộc vào Google (nếu Google thay đổi policy)
+ * 
+ * @param idToken - Google ID Token từ Google OAuth (JWT token từ Google)
  * @returns Promise với kết quả đăng nhập và thông tin user
  * @description
  * - Gửi POST request đến /api/auth/login/google với idToken
  * - Nếu là lần đầu login, hệ thống tự động tạo user mới và gửi mã xác thực qua email
- * - Logic phân role: @fpt.edu.vn → Student, @fe.edu.vn → Lecturer
+ * - Logic phân role: @fpt.edu.vn → Student, @fe.edu.vn → Lecturer (xử lý ở backend)
  */
 export const loginWithGoogle = async (
   idToken: string
@@ -46,38 +137,46 @@ export const loginWithGoogle = async (
   email?: string;
 }> => {
   try {
+    // FRONTEND: Chỉ format request và gửi HTTP POST
+    // Không có business logic ở đây
+    // Backend sẽ verify idToken với Google, tạo/lấy user, tạo JWT token
     const response = await publicApiClient.post<GoogleLoginResponse>('/api/auth/login/google', {
-      idToken: idToken,
+      idToken: idToken, // Google idToken - backend sẽ verify
     } as GoogleLoginRequest);
 
     const result = response.data;
 
-    // Xử lý response thành công (200)
+    // Xử lý response thành công (HTTP 200 và success = true)
     if (result.success && result.data) {
+      // Tạo AuthUser object từ response data
       const authUser: AuthUser = {
-        token: result.data.token,
-        userId: result.data.userId,
-        email: result.data.email,
-        fullName: result.data.fullName,
-        roleId: result.data.roleId,
-        isVerified: result.data.isVerified,
+        token: result.data.token,           // JWT token từ server (KHÔNG phải Google token)
+        userId: result.data.userId,         // User ID
+        email: result.data.email,          // Email từ Google account
+        fullName: result.data.fullName,    // Tên từ Google account
+        roleId: result.data.roleId,        // Role ID (phân theo email domain)
+        isVerified: result.data.isVerified, // Email đã verify chưa
       };
 
-      // Nếu user chưa verify email, không lưu token vào localStorage
-      // Chỉ trả về thông tin để hiển thị form verify
+      // TRƯỜNG HỢP 1: User chưa verify email
+      // Không lưu token vào sessionStorage vì chưa được verify
+      // Hiển thị form verify email với mã 6 số
       if (!result.data.isVerified) {
         return {
           success: true,
           message: 'Vui lòng xác thực email để hoàn tất đăng nhập. Mã xác thực đã được gửi đến email của bạn.',
-          needsVerification: true,
-          email: result.data.email,
+          needsVerification: true,  // Flag để UI hiển thị form verify
+          email: result.data.email,  // Email để hiển thị trong form verify
         };
       }
 
-      // Nếu đã verify, lưu vào sessionStorage và đăng nhập thành công
-      sessionStorage.setItem('auth_token', authUser.token);
-      sessionStorage.setItem('auth_user', JSON.stringify(authUser));
+      // TRƯỜNG HỢP 2: User đã verify email
+      // Lưu token và user info vào sessionStorage (giống email/password login)
+      sessionStorage.setItem('auth_token', authUser.token);  // Lưu JWT token từ server
+      sessionStorage.setItem('auth_user', JSON.stringify(authUser)); // Lưu user info
+      
       // Lưu flag để biết user đăng nhập bằng Google
+      // Flag này được dùng khi logout để revoke Google session
       sessionStorage.setItem('is_google_login', 'true');
 
       return {
@@ -202,10 +301,14 @@ export const resendVerificationEmail = async (
 };
 
 // Interface cho forgot password response
-export type ForgotPasswordResponse = ApiResponse;
+export interface ForgotPasswordResponse extends ApiResponse {
+  success: boolean;
+}
 
 // Interface cho reset password response
-export type ResetPasswordResponse = ApiResponse;
+export interface ResetPasswordResponse extends ApiResponse {
+  success: boolean;
+}
 
 /**
  * Yêu cầu đặt lại mật khẩu - gửi mã 6 số qua email

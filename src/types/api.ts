@@ -24,6 +24,38 @@ export interface ApiError {
 /**
  * Interface định nghĩa cấu trúc response chuẩn từ API
  * 
+ * Giải thích câu 8: "tại mỗi cái có response generic type khác nhau"
+ * 
+ * TẠI SAO CẦN NHIỀU INTERFACE KHÁC NHAU?
+ * 
+ * 1. ApiResponse<T> - Base interface cho tất cả responses:
+ *    - Generic <T> cho phép chỉ định kiểu dữ liệu của field 'data'
+ *    - Flexible: Có thể dùng cho bất kỳ loại data nào
+ *    - Ví dụ: ApiResponse<User>, ApiResponse<Notification[]>, ApiResponse<string>
+ * 
+ * 2. PaginatedResponse<T> - Cho responses có phân trang:
+ *    - Extends ApiResponse<T[]> → data phải là mảng
+ *    - Thêm field pagination?: Pagination
+ *    - Type-safe: TypeScript biết chắc data là mảng và có pagination info
+ *    - Ví dụ: PaginatedResponse<User> → data: User[], pagination: Pagination
+ * 
+ * 3. ActionResponse<T> - Cho create/update operations:
+ *    - Extends ApiResponse<T>
+ *    - Đảm bảo data có kiểu T (object vừa được tạo/cập nhật)
+ *    - Type-safe: TypeScript biết chính xác kiểu dữ liệu trong data
+ *    - Ví dụ: ActionResponse<User> → data: User (user vừa được tạo)
+ * 
+ * 4. DeleteResponse - Cho delete operations:
+ *    - Extends ApiResponse (không có generic vì delete không trả về data)
+ *    - Rõ ràng về mục đích: Chỉ cần biết success/error
+ *    - Type-safe: TypeScript biết không có data field
+ * 
+ * LỢI ÍCH CỦA GENERIC TYPES:
+ * - Type Safety: TypeScript biết chính xác kiểu dữ liệu → ít bug hơn
+ * - IntelliSense: IDE gợi ý đúng properties của data
+ * - Refactoring: Dễ dàng thay đổi kiểu dữ liệu mà không sợ break code
+ * - Documentation: Code tự document về kiểu dữ liệu
+ * 
  * Đây là cấu trúc response cơ bản nhất mà tất cả API endpoints đều tuân theo.
  * 
  * Generic Type <T>: Cho phép chỉ định kiểu dữ liệu của field 'data'
