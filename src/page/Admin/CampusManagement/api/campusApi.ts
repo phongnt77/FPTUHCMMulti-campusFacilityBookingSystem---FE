@@ -1,10 +1,11 @@
-import { apiClient, handleApiError } from '../../../../services/apiClient';
+import { apiClient, handleApiError, createFormDataConfig } from '../../../../services/apiClient';
 import type { PaginatedResponse, ActionResponse, DeleteResponse } from '../../../../types/api';
 
 // Interface cho Campus từ API response
 export interface Campus {
   campusId: string;
   name: string;
+  imageUrl?: string; // URL ảnh campus từ Cloudinary
   address: string;
   phoneNumber: string;
   email: string;
@@ -23,6 +24,16 @@ export interface CampusRequest {
   phoneNumber: string;
   email: string;
   status: 'Active' | 'Inactive';
+}
+
+// Interface cho Create Campus với Image Request
+export interface CampusWithImageRequest {
+  name: string;
+  address?: string;
+  phoneNumber?: string;
+  email?: string;
+  status?: 'Active' | 'Inactive';
+  image?: File;
 }
 
 // Interface cho API Response với pagination
@@ -156,6 +167,61 @@ export const createCampus = async (campusData: CampusRequest): Promise<CampusAct
     return response.data;
   } catch (error) {
     throw handleApiError(error, 'Lỗi khi tạo campus');
+  }
+};
+
+/**
+ * Tạo campus mới kèm upload ảnh lên Cloudinary
+ * @param campusData - Thông tin campus cần tạo (có thể có image)
+ * @returns Promise với campus đã được tạo
+ * @description
+ * - POST /api/campuses/with-image
+ * - Content-Type: multipart/form-data
+ * - Chỉ Facility_Admin (RL0003) có thể tạo
+ * - Ảnh sẽ được upload lên Cloudinary và ImageUrl sẽ lưu secure_url
+ */
+export const createCampusWithImage = async (
+  campusData: CampusWithImageRequest
+): Promise<CampusActionResponse> => {
+  try {
+    // Tạo FormData object
+    const formData = new FormData();
+    
+    // Thêm các field vào FormData
+    formData.append('name', campusData.name);
+    
+    if (campusData.address) {
+      formData.append('address', campusData.address);
+    }
+    
+    if (campusData.phoneNumber) {
+      formData.append('phoneNumber', campusData.phoneNumber);
+    }
+    
+    if (campusData.email) {
+      formData.append('email', campusData.email);
+    }
+    
+    if (campusData.status) {
+      formData.append('status', campusData.status);
+    }
+    
+    // Thêm file ảnh nếu có
+    if (campusData.image) {
+      formData.append('image', campusData.image);
+    }
+
+    // Gửi request với FormData
+    // Interceptor sẽ tự động xóa Content-Type header khi detect FormData
+    // Browser sẽ tự động set multipart/form-data với boundary
+    const response = await apiClient.post<CampusActionResponse>(
+      '/api/campuses/with-image',
+      formData
+    );
+    
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi tạo campus với ảnh');
   }
 };
 
