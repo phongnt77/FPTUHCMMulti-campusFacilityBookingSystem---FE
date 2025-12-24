@@ -195,20 +195,37 @@ const MyBookingsPage = () => {
     return colors[type] || { bg: 'bg-gray-100', text: 'text-gray-600' };
   };
 
-  // Helper function to parse date string from backend
-  // Backend returns format: "dd/MM/yyyy HH:mm:ss" (e.g., "10/12/2025 09:10:11")
-  // Or just "dd/MM/yyyy" for date only fields
+  // ============================================
+  // HELPER FUNCTIONS - PARSE VÀ FORMAT NGÀY GIỜ
+  // ============================================
+  
+  /**
+   * Parse chuỗi ngày từ backend thành JavaScript Date object
+   * 
+   * @description Backend có thể trả về 3 format khác nhau:
+   *   1. "dd/MM/yyyy HH:mm:ss" - DateTime đầy đủ (ví dụ: "10/12/2025 09:10:11")
+   *   2. "dd/MM/yyyy" - Chỉ ngày (ví dụ: "10/12/2025")
+   *   3. ISO 8601 - Format chuẩn (ví dụ: "2025-12-10T09:10:11Z")
+   * 
+   * @param dateString - Chuỗi ngày từ backend
+   * @returns Date object hoặc null nếu không parse được
+   * 
+   * @example
+   * parseDateString("10/12/2025 09:10:11") // → Date: 10 Dec 2025, 09:10:11
+   * parseDateString("10/12/2025")          // → Date: 10 Dec 2025, 00:00:00
+   * parseDateString("2025-12-10T09:10:11") // → Date (ISO fallback)
+   */
   const parseDateString = (dateString: string | null | undefined): Date | null => {
     if (!dateString) return null;
     
     try {
-      // Try parsing "dd/MM/yyyy HH:mm:ss" format
+      // Format 1: "dd/MM/yyyy HH:mm:ss" - DateTime đầy đủ từ backend
       const ddMMyyyyWithTimeMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
       if (ddMMyyyyWithTimeMatch) {
         const [, day, month, year, hours, minutes, seconds] = ddMMyyyyWithTimeMatch;
         return new Date(
           parseInt(year),
-          parseInt(month) - 1,
+          parseInt(month) - 1,  // JavaScript month: 0-11
           parseInt(day),
           parseInt(hours),
           parseInt(minutes),
@@ -216,14 +233,14 @@ const MyBookingsPage = () => {
         );
       }
       
-      // Try parsing "dd/MM/yyyy" format (date only)
+      // Format 2: "dd/MM/yyyy" - Chỉ ngày (cho trường date của booking)
       const ddMMyyyyMatch = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
       if (ddMMyyyyMatch) {
         const [, day, month, year] = ddMMyyyyMatch;
         return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       }
       
-      // Fallback: try standard Date parsing (for ISO 8601 format)
+      // Format 3: Fallback - ISO 8601 hoặc format khác mà JS Date hiểu
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
         return date;
@@ -235,19 +252,123 @@ const MyBookingsPage = () => {
     }
   };
 
+  /**
+   * Format chuỗi ngày thành dạng hiển thị tiếng Việt
+   * 
+   * @param dateString - Chuỗi ngày từ backend
+   * @returns Chuỗi format "CN, 10/12/2025" hoặc "N/A" nếu lỗi
+   */
   const formatDate = (dateString: string) => {
     const date = parseDateString(dateString);
     if (!date) return 'N/A';
     try {
       return date.toLocaleDateString('vi-VN', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+        weekday: 'short',   // "CN", "T2", "T3"...
+        day: '2-digit',     // "10"
+        month: '2-digit',   // "12"
+        year: 'numeric'     // "2025"
       });
     } catch {
       return 'N/A';
     }
+  };
+
+  /**
+   * Format thời gian an toàn - xử lý nhiều định dạng đầu vào khác nhau
+   * 
+   * @description Hàm này xử lý việc format thời gian từ nhiều nguồn dữ liệu khác nhau:
+   *   - Date object (hợp lệ hoặc không hợp lệ)
+   *   - String format "HH:mm" (ví dụ: "09:00")
+   *   - String format "dd/MM/yyyy HH:mm:ss" (ví dụ: "10/12/2025 09:00:00")
+   *   - Null hoặc undefined
+   * 
+   * Hàm sẽ tự động detect định dạng và convert về format chuẩn "HH:mm" (24h).
+   * Nếu không thể parse được, sẽ trả về "N/A" thay vì "Invalid Date".
+   * 
+   * @param time - Dữ liệu thời gian cần format:
+   *   - Date object: JavaScript Date object (có thể là Invalid Date)
+   *   - String "HH:mm": Chuỗi thời gian đã format sẵn (ví dụ: "09:00")
+   *   - String "dd/MM/yyyy HH:mm:ss": Chuỗi datetime từ backend
+   *   - null/undefined: Giá trị rỗng
+   * 
+   * @returns Chuỗi format "HH:mm" (24h) hoặc "N/A" nếu không thể parse
+   * 
+   * @example
+   * formatTimeSafe(new Date("2025-12-16T09:00:00")) // → "09:00"
+   * formatTimeSafe("09:00") // → "09:00"
+   * formatTimeSafe("10/12/2025 09:00:00") // → "09:00"
+   * formatTimeSafe(null) // → "N/A"
+   * formatTimeSafe(new Date("invalid")) // → "N/A"
+   */
+  const formatTimeSafe = (time: string | Date | null | undefined): string => {
+    // ============================================
+    // BƯỚC 1: KIỂM TRA NULL/UNDEFINED
+    // ============================================
+    if (!time) return 'N/A';
+    
+    // ============================================
+    // BƯỚC 2: XỬ LÝ DATE OBJECT
+    // ============================================
+    if (time instanceof Date) {
+      // Kiểm tra Date có hợp lệ không (Invalid Date sẽ có getTime() = NaN)
+      if (isNaN(time.getTime())) return 'N/A';
+      
+      // Format Date thành chuỗi "HH:mm" (24h format)
+      try {
+        return time.toLocaleTimeString('vi-VN', { 
+          hour: '2-digit',    // Hiển thị 2 chữ số cho giờ (09, 10, ...)
+          minute: '2-digit',   // Hiển thị 2 chữ số cho phút (00, 05, ...)
+          hour12: false        // Sử dụng format 24 giờ (không dùng AM/PM)
+        });
+      } catch {
+        // Nếu có lỗi khi format, trả về "N/A"
+        return 'N/A';
+      }
+    }
+    
+    // ============================================
+    // BƯỚC 3: XỬ LÝ STRING
+    // ============================================
+    if (typeof time === 'string') {
+      // Case 1: String đã là format "HH:mm" (ví dụ: "09:00", "14:30")
+      // Regex kiểm tra: 2 chữ số, dấu :, 2 chữ số
+      if (/^\d{2}:\d{2}$/.test(time)) {
+        return time; // Trả về luôn không cần xử lý thêm
+      }
+      
+      // Case 2: String có format datetime (ví dụ: "10/12/2025 09:00:00")
+      // Extract phần thời gian bằng regex: tìm pattern "HH:mm" hoặc "HH:mm:ss"
+      const timeMatch = time.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        // timeMatch[1] = giờ, timeMatch[2] = phút
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
+      
+      // Case 3: String có format khác, thử parse thành Date object
+      // Sử dụng hàm parseDateString đã có sẵn để parse
+      const date = parseDateString(time);
+      if (date && !isNaN(date.getTime())) {
+        // Nếu parse thành công, format lại thành "HH:mm"
+        try {
+          return date.toLocaleTimeString('vi-VN', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          });
+        } catch {
+          return 'N/A';
+        }
+      }
+      
+      // Nếu không parse được, trả về "N/A"
+      return 'N/A';
+    }
+    
+    // ============================================
+    // BƯỚC 4: FALLBACK
+    // ============================================
+    // Nếu không phải Date, không phải string, trả về "N/A"
+    return 'N/A';
   };
 
   const openFeedbackModal = (booking: UserBooking) => {
@@ -447,7 +568,23 @@ const MyBookingsPage = () => {
     openCheckOutModal(booking);
   };
 
-  // Mock time helper - để test, set trong console: localStorage.setItem('mockTime', '2025-12-16T09:00:00')
+  // ============================================
+  // HELPER: LẤY THỜI GIAN HIỆN TẠI (HỖ TRỢ MOCK)
+  // ============================================
+  /**
+   * Lấy thời gian hiện tại, hỗ trợ mock để test
+   * 
+   * @description Khi test check-in/out, không cần chờ đến đúng giờ.
+   *              Set mock time trong browser console để test.
+   * 
+   * @example
+   * // Trong browser console:
+   * localStorage.setItem('mockTime', '2025-12-16T09:00:00')
+   * // Refresh page → check-in/out sẽ dựa trên thời gian mock
+   * localStorage.removeItem('mockTime') // Để dùng thời gian thật
+   * 
+   * @returns Date object - thời gian mock hoặc thời gian thật
+   */
   const getCurrentTime = (): Date => {
     const mockTime = localStorage.getItem('mockTime');
     if (mockTime) {
@@ -461,23 +598,53 @@ const MyBookingsPage = () => {
     return currentTime;
   };
 
-  // Helper function to check if check-in is available
-  // Check-in: từ X phút trước StartTime đến Y phút sau StartTime (lấy từ system settings)
-  // Ví dụ: nếu settings là 15 phút trước và 15 phút sau, đặt 9-10h thì check-in từ 8h45-9h15
+  // ============================================
+  // LOGIC KIỂM TRA CHECK-IN
+  // ============================================
+  /**
+   * Kiểm tra trạng thái nút Check-in cho một booking
+   * 
+   * @description Logic check-in:
+   *   1. Booking phải ở trạng thái "Approved"
+   *   2. Chưa check-in (checkInTime = null)
+   *   3. Thời gian hiện tại trong khoảng cho phép:
+   *      - Từ: startTime - checkInMinutesBeforeStart (ví dụ: 15 phút trước)
+   *      - Đến: startTime + checkInMinutesAfterStart (ví dụ: 15 phút sau)
+   * 
+   * @param booking - Booking cần kiểm tra
+   * @returns Object với:
+   *   - canShow: Có hiển thị nút không
+   *   - isEnabled: Nút có click được không
+   *   - disabledReason: Lý do disable (hiển thị tooltip)
+   * 
+   * @example
+   * // Booking 9:00-10:00, settings 15 phút trước/sau
+   * // Check-in window: 8:45 - 9:15
+   * // Hiện tại 8:30 → disabled, reason: "Có thể check-in sau 15 phút"
+   * // Hiện tại 9:00 → enabled
+   * // Hiện tại 9:20 → disabled, reason: "Đã hết thời gian check-in"
+   */
   const getCheckInStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
-    // Basic checks
+    // ============================================
+    // KIỂM TRA CƠ BẢN
+    // ============================================
+    // Chỉ hiện nút check-in cho booking đã được duyệt
     if (booking.status !== 'Approved') return { canShow: false, isEnabled: false };
-    if (booking.checkInTime) return { canShow: false, isEnabled: false }; // Already checked in
+    // Đã check-in rồi → ẩn nút
+    if (booking.checkInTime) return { canShow: false, isEnabled: false };
     
     try {
-      // Use parseDateString to handle backend date format
+      // ============================================
+      // PARSE THỜI GIAN BẮT ĐẦU CỦA BOOKING
+      // ============================================
       let startTime: Date | null = null;
       
+      // Cách 1: Parse từ startDateTime (nếu có)
       if (booking.startDateTime) {
         startTime = parseDateString(booking.startDateTime);
       }
       
-      // Fallback: construct from date and time strings
+      // Cách 2: Fallback - ghép từ date + startTime string
       if (!startTime) {
         const bookingDate = parseDateString(booking.date);
         if (bookingDate && booking.startTime) {
@@ -490,18 +657,26 @@ const MyBookingsPage = () => {
         }
       }
       
-      // Validate date
+      // Validate: nếu không parse được, cho phép check-in (backend sẽ validate)
       if (!startTime || isNaN(startTime.getTime())) {
         console.warn('Invalid date/time for booking:', booking.id);
-        return { canShow: true, isEnabled: true }; // Let backend validate
+        return { canShow: true, isEnabled: true };
       }
       
+      // ============================================
+      // TÍNH TOÁN KHOẢNG THỜI GIAN CHO PHÉP CHECK-IN
+      // ============================================
       const now = getCurrentTime();
+      // Thời điểm bắt đầu được check-in (X phút trước startTime)
       const allowedCheckInStart = new Date(startTime.getTime() - systemSettings.checkInMinutesBeforeStart * 60 * 1000);
+      // Thời điểm kết thúc được check-in (Y phút sau startTime)
       const allowedCheckInEnd = new Date(startTime.getTime() + systemSettings.checkInMinutesAfterStart * 60 * 1000);
       
-      // Check if within check-in window
+      // ============================================
+      // KIỂM TRA: QUÁ SỚM?
+      // ============================================
       if (now < allowedCheckInStart) {
+        // Tính thời gian còn lại
         const diffMs = allowedCheckInStart.getTime() - now.getTime();
         const diffMins = Math.ceil(diffMs / 60000);
         const hours = Math.floor(diffMins / 60);
@@ -514,6 +689,9 @@ const MyBookingsPage = () => {
         };
       }
       
+      // ============================================
+      // KIỂM TRA: QUÁ MUỘN?
+      // ============================================
       if (now > allowedCheckInEnd) {
         return { 
           canShow: true, 
@@ -522,29 +700,53 @@ const MyBookingsPage = () => {
         };
       }
       
+      // ============================================
+      // TRONG KHOẢNG CHO PHÉP → ENABLE
+      // ============================================
       return { canShow: true, isEnabled: true };
     } catch (error) {
       console.error('Error checking check-in availability:', error);
-      return { canShow: true, isEnabled: true }; // Let backend validate
+      // Nếu có lỗi, cho phép check-in (backend sẽ validate lại)
+      return { canShow: true, isEnabled: true };
     }
   };
 
-  // Helper function to check if check-out is available
-  // Check-out: Sau khi đã check-in và đã đủ thời gian tối thiểu (nếu có setting)
+  // ============================================
+  // LOGIC KIỂM TRA CHECK-OUT
+  // ============================================
+  /**
+   * Kiểm tra trạng thái nút Check-out cho một booking
+   * 
+   * @description Logic check-out:
+   *   1. Đã check-in (checkInTime != null)
+   *   2. Chưa check-out (checkOutTime = null)
+   *   3. Đủ thời gian tối thiểu sau check-in (nếu có setting)
+   * 
+   * @param booking - Booking cần kiểm tra
+   * @returns Object với canShow, isEnabled, disabledReason
+   */
   const getCheckOutStatus = (booking: UserBooking): { canShow: boolean; isEnabled: boolean; disabledReason?: string } => {
+    // Kiểm tra trạng thái booking
     if (booking.status !== 'Approved' && booking.status !== 'Finish') return { canShow: false, isEnabled: false };
-    if (!booking.checkInTime) return { canShow: false, isEnabled: false }; // Not checked in yet
-    if (booking.checkOutTime) return { canShow: false, isEnabled: false }; // Already checked out
+    // Chưa check-in → không thể check-out
+    if (!booking.checkInTime) return { canShow: false, isEnabled: false };
+    // Đã check-out rồi → ẩn nút
+    if (booking.checkOutTime) return { canShow: false, isEnabled: false };
     
-    // Kiểm tra thời gian tối thiểu sau khi check-in
+    // ============================================
+    // KIỂM TRA THỜI GIAN TỐI THIỂU SAU CHECK-IN
+    // ============================================
+    // Nếu có setting checkOutMinutesAfterCheckIn > 0, phải đợi đủ thời gian
     if (systemSettings.checkOutMinutesAfterCheckIn > 0) {
       try {
         const checkInTime = parseDateString(booking.checkInTime);
         if (checkInTime) {
           const now = getCurrentTime();
+          // Thời điểm sớm nhất được check-out
           const minCheckOutTime = new Date(checkInTime.getTime() + systemSettings.checkOutMinutesAfterCheckIn * 60 * 1000);
           
           if (now < minCheckOutTime) {
+            // Tính thời gian còn lại
             const diffMs = minCheckOutTime.getTime() - now.getTime();
             const diffMins = Math.ceil(diffMs / 60000);
             const hours = Math.floor(diffMins / 60);
@@ -943,7 +1145,7 @@ const MyBookingsPage = () => {
                     <div className="p-3 bg-gray-50 rounded-lg mb-5">
                       <p className="font-semibold text-gray-900">{selectedBooking.facility.name}</p>
                       <p className="text-sm text-gray-500">
-                        {formatDate(selectedBooking.date)} • {selectedBooking.startTime} - {selectedBooking.endTime}
+                        {formatDate(selectedBooking.date)} • {formatTimeSafe(selectedBooking.startTime)} - {formatTimeSafe(selectedBooking.endTime)}
                       </p>
                     </div>
 
@@ -1078,7 +1280,7 @@ const MyBookingsPage = () => {
                 <div className="p-3 bg-gray-50 rounded-lg mb-5">
                   <p className="font-semibold text-gray-900">{checkInOutModal.booking.facility.name}</p>
                   <p className="text-sm text-gray-500">
-                    {formatDate(checkInOutModal.booking.date)} • {checkInOutModal.booking.startTime} - {checkInOutModal.booking.endTime}
+                    {formatDate(checkInOutModal.booking.date)} • {formatTimeSafe(checkInOutModal.booking.startTime)} - {formatTimeSafe(checkInOutModal.booking.endTime)}
                   </p>
                 </div>
 

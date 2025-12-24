@@ -91,23 +91,139 @@ const mapFacilityType = (typeName: string): FacilityType => {
     'Meeting Room': 'Meeting Room',
     'Computer Lab': 'Laboratory',
     'Sports Court': 'Sport Facility',
-    'Auditorium': 'Auditorium',
     'Laboratory': 'Laboratory',
     'Sport Facility': 'Sport Facility',
-    'Library': 'Library',
   };
   return typeMap[typeName] || 'Classroom';
 };
 
 // Map backend booking to frontend UserBooking
 const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbackResponse): UserBooking => {
-  const startDate = new Date(b.startTime);
-  const endDate = new Date(b.endTime);
+  const parseBackendDateTime = (value: string): Date | null => {
+    if (!value) return null;
+
+    try {
+      // Format 1: dd/MM/yyyy HH:mm:ss or dd/MM/yyyy HH:mm
+      const ddMMyyyyTime = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s*$/);
+      if (ddMMyyyyTime) {
+        const [, day, month, year, hours, minutes, seconds] = ddMMyyyyTime;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds ?? 0)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 2: dd/MM/yyyy (date only)
+      const ddMMyyyy = value.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/);
+      if (ddMMyyyy) {
+        const [, day, month, year] = ddMMyyyy;
+        const date = new Date(Number(year), Number(month) - 1, Number(day));
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 3: yyyy-MM-ddTHH:mm:ss (ISO format)
+      const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+      if (isoMatch) {
+        const [, year, month, day, hours, minutes, seconds] = isoMatch;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 4: yyyy-MM-dd HH:mm:ss
+      const yyyyMMddTime = value.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+      if (yyyyMMddTime) {
+        const [, year, month, day, hours, minutes, seconds] = yyyyMMddTime;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hours),
+          Number(minutes),
+          Number(seconds)
+        );
+        if (!Number.isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Format 5: Fallback - try standard Date parsing
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const startDate = parseBackendDateTime(b.startTime);
+  const endDate = parseBackendDateTime(b.endTime);
+
+  const safeTime = (d: Date | null, fallback: string) => {
+    if (!d) {
+      // Try to extract time from fallback string if it's in format "dd/MM/yyyy HH:mm:ss"
+      const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
+      return fallback;
+    }
+    try {
+      // Check if date is valid
+      if (isNaN(d.getTime())) {
+        // Try to extract time from fallback string
+        const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+        if (timeMatch) {
+          return `${timeMatch[1]}:${timeMatch[2]}`;
+        }
+        return fallback;
+      }
+      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch {
+      // Try to extract time from fallback string
+      const timeMatch = fallback.match(/(\d{2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        return `${timeMatch[1]}:${timeMatch[2]}`;
+      }
+      return fallback;
+    }
+  };
+
+  const safeIso = (d: Date | null, fallback: string) => {
+    if (!d) return fallback;
+    try {
+      return d.toISOString();
+    } catch {
+      return fallback;
+    }
+  };
+
+  const derivedDate = startDate ? safeIso(startDate, b.startTime).split('T')[0] : (b.startTime.includes('T') ? b.startTime.split('T')[0] : b.startTime);
   
   return {
     id: b.bookingId,
     lessonBookingId: b.bookingId,
-    lessonBookingDate: b.startTime.split('T')[0],
+    lessonBookingDate: derivedDate,
     facilityId: b.facilityId,
     facility: {
       id: b.facilityId,
@@ -121,10 +237,10 @@ const mapBookingResponse = (b: BackendBookingResponse, feedback?: BackendFeedbac
       isActive: true,
       description: b.facilityDescription || '',
     },
-    date: b.startTime.split('T')[0],
-    startTime: startDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    endTime: endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    startDateTime: b.startTime,
+    date: derivedDate,
+    startTime: safeTime(startDate, b.startTime),
+    endTime: safeTime(endDate, b.endTime),
+    startDateTime: safeIso(startDate, b.startTime),
     checkInTime: b.checkInTime,
     checkOutTime: b.checkOutTime,
     purpose: b.purpose,
@@ -436,22 +552,27 @@ export const myBookingsApi = {
     images?: File[]
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(bookingId)}`;
+      const mockTime = localStorage.getItem('mockTime');
+      const hasImages = !!(images && images.length > 0);
+      const url = hasImages
+        ? `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN_WITH_IMAGES(bookingId)}`
+        : `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_IN(bookingId)}`;
       
-      // Create FormData if images are provided
-      const formData = new FormData();
-      if (note) {
-        formData.append('note', note);
-      }
-      if (images && images.length > 0) {
-        images.forEach((image, index) => {
-          formData.append('images', image);
-        });
-      }
-      
+      const body = (() => {
+        if (!hasImages) {
+          return note ? JSON.stringify({ note }) : undefined;
+        }
+
+        const formData = new FormData();
+        if (note) formData.append('note', note);
+        images!.forEach((image) => formData.append('images', image));
+        return formData;
+      })();
+
       const response = await apiFetch(url, {
         method: 'POST',
-        body: images && images.length > 0 ? formData : (note ? JSON.stringify({ note }) : undefined),
+        body,
+        headers: mockTime ? { 'X-Mock-Time': mockTime } : undefined,
       });
       
       if (response.success) {
@@ -478,22 +599,27 @@ export const myBookingsApi = {
     images?: File[]
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      const url = `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(bookingId)}`;
+      const mockTime = localStorage.getItem('mockTime');
+      const hasImages = !!(images && images.length > 0);
+      const url = hasImages
+        ? `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT_WITH_IMAGES(bookingId)}`
+        : `${API_BASE_URL}${API_ENDPOINTS.BOOKING.CHECK_OUT(bookingId)}`;
       
-      // Create FormData if images are provided
-      const formData = new FormData();
-      if (note) {
-        formData.append('note', note);
-      }
-      if (images && images.length > 0) {
-        images.forEach((image, index) => {
-          formData.append('images', image);
-        });
-      }
-      
+      const body = (() => {
+        if (!hasImages) {
+          return note ? JSON.stringify({ note }) : undefined;
+        }
+
+        const formData = new FormData();
+        if (note) formData.append('note', note);
+        images!.forEach((image) => formData.append('images', image));
+        return formData;
+      })();
+
       const response = await apiFetch(url, {
         method: 'POST',
-        body: images && images.length > 0 ? formData : (note ? JSON.stringify({ note }) : undefined),
+        body,
+        headers: mockTime ? { 'X-Mock-Time': mockTime } : undefined,
       });
       
       if (response.success) {
