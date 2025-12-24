@@ -11,9 +11,10 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const { user, isAuthenticated, isLoading } = useAuthState();
   const location = useLocation();
 
-
   // Show loading while checking authentication
-  if (isLoading) {
+  // Nếu đang loading hoặc đã authenticated nhưng chưa có user data (race condition khi navigate back)
+  // thì hiển thị loading để đợi user data được load
+  if (isLoading || (isAuthenticated && !user)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -30,8 +31,15 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Nếu đã authenticated nhưng không có user data (có thể do lỗi parse hoặc data không hợp lệ)
+  // Redirect về login để user đăng nhập lại
+  if (!user) {
+    console.warn('ProtectedRoute - Authenticated but no user data found. Redirecting to login.');
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
   // Check role-based access if allowedRoles is specified
-  if (allowedRoles && user) {
+  if (allowedRoles) {
     // Debug logging để kiểm tra role
     console.log('ProtectedRoute - User role:', user.role);
     console.log('ProtectedRoute - Allowed roles:', allowedRoles);

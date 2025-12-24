@@ -60,6 +60,12 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
+    // Nếu data là FormData, xóa Content-Type để browser tự động set multipart/form-data với boundary
+    // Điều này rất quan trọng để tránh lỗi "Unsupported Media Type"
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => {
@@ -158,12 +164,14 @@ export const handleApiError = (error: unknown, defaultMessage: string): Error =>
  * Automatically removes Content-Type header to let browser set it with boundary
  */
 export const createFormDataConfig = (config?: AxiosRequestConfig): AxiosRequestConfig => {
+  const headers = { ...config?.headers };
+  // Xóa Content-Type header để browser tự động set multipart/form-data với boundary
+  // Nếu không xóa, axios sẽ giữ Content-Type: application/json từ default config
+  delete headers['Content-Type'];
+  
   return {
     ...config,
-    headers: {
-      ...config?.headers,
-      // Don't set Content-Type for FormData - browser will set it with boundary
-    },
+    headers,
   };
 };
 
