@@ -128,6 +128,52 @@ const LoginPage = () => {
 
   /**
    * Initialize Google Sign In
+   * 
+   * Giải thích: Google OAuth được tích hợp như thế nào? Token được xử lý ra sao?
+   * 
+   * GOOGLE OAUTH INTEGRATION FLOW:
+   * 
+   * 1. FRONTEND SETUP (Chỉ làm UI và gọi Google API):
+   *    - Load Google Identity Services script: https://accounts.google.com/gsi/client
+   *    - Initialize với ClientID (PHẢI KHỚP với backend)
+   *    - Render Google Sign-In button
+   *    - Setup callback để nhận idToken từ Google
+   * 
+   * 2. USER INTERACTION:
+   *    - User nhấp vào Google button
+   *    - Google popup hiển thị, user chọn account và authorize
+   *    - Google trả về idToken (JWT token từ Google) trong callback
+   * 
+   * 3. FRONTEND CHỈ GỌI API:
+   *    - Frontend nhận idToken từ Google callback
+   *    - Frontend KHÔNG verify token (không có secret key)
+   *    - Frontend chỉ gửi idToken lên backend: POST /api/auth/login/google
+   *    - Frontend không có business logic, chỉ pass-through
+   * 
+   * 4. BACKEND XỬ LÝ TẤT CẢ:
+   *    - Backend nhận idToken từ frontend
+   *    - Backend verify idToken với Google (có ClientID và secret)
+   *    - Backend extract thông tin user từ idToken (email, name, etc.)
+   *    - Backend check xem user đã tồn tại chưa:
+   *      * Nếu chưa: Tạo user mới, gửi mã verify email
+   *      * Nếu rồi: Lấy thông tin user từ database
+   *    - Backend phân role dựa trên email domain (@fpt.edu.vn → Student, @fe.edu.vn → Lecturer)
+   *    - Backend tạo JWT token riêng của hệ thống (KHÔNG phải Google token)
+   *    - Backend trả về: { success, data: { token, userId, email, ... } }
+   * 
+   * 5. FRONTEND LƯU TOKEN:
+   *    - Frontend nhận JWT token từ backend (token của hệ thống, không phải Google token)
+   *    - Frontend lưu vào sessionStorage: 'auth_token' = JWT token từ backend
+   *    - Token này được dùng cho tất cả API calls sau (qua apiClient interceptor)
+   * 
+   * TẠI SAO KHÔNG DÙNG GOOGLE TOKEN TRỰC TIẾP?
+   * - Google token chỉ dùng để verify identity với Google
+   * - Hệ thống cần token riêng để:
+   *   * Kiểm soát expiration time
+   *   * Thêm custom claims (role, permissions)
+   *   * Revoke token khi cần
+   *   * Không phụ thuộc vào Google
+   * 
    * QUAN TRỌNG: ClientID ở frontend PHẢI KHỚP với ClientID trong appsettings.json của backend
    * Nếu không khớp sẽ gây lỗi "JWT contains untrusted 'aud' claim"
    * Backend đã config ClientID, frontend chỉ cần lấy idToken và gửi lên backend để verify
@@ -138,6 +184,7 @@ const LoginPage = () => {
     }
 
     // Lấy ClientID từ env - PHẢI KHỚP với backend
+    // ClientID này được Google cấp và phải được config ở cả frontend và backend
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
     
     if (!clientId) {
@@ -147,19 +194,21 @@ const LoginPage = () => {
     }
 
     try {
-      // Clear button trước khi render lại
+      // Clear button trước khi render lại (tránh duplicate buttons)
       googleButtonRef.current.innerHTML = '';
 
-      // Initialize Google Identity Services
+      // FRONTEND: Initialize Google Identity Services
+      // Chỉ setup UI và callback, KHÔNG verify token ở đây
       // Không verify JWT ở frontend, chỉ lấy idToken và gửi lên backend
       window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleLoginSuccess,
-        auto_select: false,
-        cancel_on_tap_outside: true,
+        client_id: clientId, // ClientID phải khớp với backend
+        callback: handleGoogleLoginSuccess, // Callback khi user chọn account
+        auto_select: false, // Không tự động chọn account
+        cancel_on_tap_outside: true, // Đóng popup khi click outside
       });
 
-      // Render button vào div
+      // FRONTEND: Render Google Sign-In button vào div
+      // Google sẽ tự động render button với styling của Google
       window.google.accounts.id.renderButton(
         googleButtonRef.current,
         {
@@ -215,6 +264,37 @@ const LoginPage = () => {
 
   /**
    * Xử lý khi Google OAuth login thành công
+   * 
+   * Giải thích: Frontend chỉ gọi API, backend xử lý logic
+   * 
+   * FLOW KHI GOOGLE CALLBACK:
+   * 
+   * 1. FRONTEND: Nhận idToken từ Google
+   *    - Google callback trả về response.credential (idToken - JWT từ Google)
+   *    - Frontend KHÔNG verify token này (không có secret key)
+   *    - Frontend chỉ lưu tạm để gửi lên backend
+   * 
+   * 2. FRONTEND: Gọi API loginWithGoogle(idToken)
+   *    - Chỉ làm nhiệm vụ gửi HTTP POST request
+   *    - POST /api/auth/login/google với body: { idToken }
+   *    - Không có business logic ở đây
+   * 
+   * 3. BACKEND: Xử lý tất cả logic
+   *    - Nhận idToken từ request body
+   *    - Verify idToken với Google (có ClientID và secret)
+   *    - Extract user info từ token (email, name, picture)
+   *    - Check database: User đã tồn tại chưa?
+   *    - Nếu chưa: Tạo user mới, gửi mã verify email
+   *    - Nếu rồi: Lấy user từ database
+   *    - Phân role: @fpt.edu.vn → Student, @fe.edu.vn → Lecturer
+   *    - Tạo JWT token riêng của hệ thống
+   *    - Trả về response: { success, data: { token, userId, ... } }
+   * 
+   * 4. FRONTEND: Nhận response và lưu token
+   *    - Nhận JWT token từ backend (token của hệ thống)
+   *    - Lưu vào sessionStorage
+   *    - Token này được dùng cho tất cả API calls sau
+   * 
    * Nhận idToken từ Google và gửi lên backend (backend sẽ verify)
    */
   const handleGoogleLoginSuccess = async (response: { credential: string }) => {
@@ -230,10 +310,14 @@ const LoginPage = () => {
     sessionStorage.removeItem('auth_user');
     sessionStorage.removeItem('is_google_login');
 
-    // idToken đã được Google trả về, gửi trực tiếp lên backend
-    // Backend sẽ verify JWT với ClientID của nó
+    // FRONTEND: idToken đã được Google trả về
+    // Frontend KHÔNG verify token này, chỉ gửi trực tiếp lên backend
+    // Backend sẽ verify JWT với ClientID và secret của nó
     try {
       setLoading(true);
+      
+      // FRONTEND CHỈ GỌI API: Gửi idToken lên backend
+      // Backend sẽ xử lý tất cả: verify token, tạo/lấy user, tạo JWT token
       const result = await loginWithGoogle(response.credential);
       setLoading(false);
 

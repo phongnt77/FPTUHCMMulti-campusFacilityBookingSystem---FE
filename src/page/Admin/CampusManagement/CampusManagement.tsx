@@ -62,8 +62,34 @@ const CampusManagement = () => {
   /**
    * Function: Fetch campuses từ API
    * 
+   * Giải thích câu 5: "tránh rerender cho hàm"
+   * 
+   * TẠI SAO DÙNG useCallback?
+   * 
+   * 1. Vấn đề không dùng useCallback:
+   *    - Mỗi lần component re-render, function fetchCampuses sẽ được tạo mới
+   *    - useEffect([fetchCampuses]) sẽ thấy fetchCampuses là function mới → chạy lại
+   *    - → Infinite loop hoặc re-render không cần thiết
+   * 
+   * 2. Giải pháp với useCallback:
+   *    - useCallback memoize (cache) function, chỉ tạo mới khi dependencies thay đổi
+   *    - Dependencies: [currentPage, itemsPerPage]
+   *    - → Function chỉ được tạo mới khi currentPage hoặc itemsPerPage thay đổi
+   *    - → useEffect chỉ chạy lại khi thực sự cần (khi dependencies thay đổi)
+   * 
+   * 3. Lợi ích:
+   *    - Tránh infinite loop
+   *    - Tối ưu performance (không tạo function mới mỗi lần render)
+   *    - Predictable behavior (dễ debug hơn)
+   * 
+   * 4. Khi nào nên dùng useCallback:
+   *    - Function được dùng trong dependency array của useEffect/useMemo
+   *    - Function được pass xuống child component (tránh child re-render)
+   *    - Function có logic phức tạp (tốn thời gian tạo)
+   * 
    * Gọi API để lấy danh sách campuses với pagination
-   * Sử dụng useCallback để memoize function và tránh re-render không cần thiết
+   * 
+   * @returns {Promise<void>} - Promise không trả về giá trị
    */
   const fetchCampuses = useCallback(async () => {
     setLoading(true)
