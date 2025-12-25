@@ -172,8 +172,8 @@ const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-gray-200 p-6">
+      <div className="w-full max-w-2xl max-h-[90vh] rounded-lg border border-gray-200 bg-white shadow-xl flex flex-col">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6 flex-shrink-0">
           <h2 className="text-xl font-semibold text-gray-900">
             {isEdit ? 'Chỉnh sửa campus' : 'Thêm campus mới'}
           </h2>
@@ -186,129 +186,131 @@ const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProp
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                <Building2 className="mr-1 inline h-4 w-4" />
-                Tên campus <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                defaultValue={campus?.name || ''}
-                required
-                disabled={loading}
-                placeholder="VD: Campus Hồ Chí Minh"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                <MapPin className="mr-1 inline h-4 w-4" />
-                Địa chỉ <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="address"
-                defaultValue={campus?.address || ''}
-                required
-                disabled={loading}
-                rows={3}
-                placeholder="VD: 123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-6 overflow-y-auto flex-1">
+            <div className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <Phone className="mr-1 inline h-4 w-4" />
-                  Số điện thoại <span className="text-red-500">*</span>
+                  <Building2 className="mr-1 inline h-4 w-4" />
+                  Tên campus <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="tel"
-                  name="phoneNumber"
-                  defaultValue={campus?.phoneNumber || ''}
+                  type="text"
+                  name="name"
+                  defaultValue={campus?.name || ''}
                   required
                   disabled={loading}
-                  placeholder="VD: 028 7300 1866"
-                  onInput={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    target.value = target.value.replace(/[^0-9+\-\s()]/g, '');
-                  }}
+                  placeholder="VD: Campus Hồ Chí Minh"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <Mail className="mr-1 inline h-4 w-4" />
-                  Email <span className="text-red-500">*</span>
+                  <MapPin className="mr-1 inline h-4 w-4" />
+                  Địa chỉ <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  name="email"
-                  defaultValue={campus?.email || ''}
+                <textarea
+                  name="address"
+                  defaultValue={campus?.address || ''}
                   required
                   disabled={loading}
-                  placeholder="VD: contact@fpt.edu.vn"
+                  rows={3}
+                  placeholder="VD: 123 Đường ABC, Quận XYZ, TP. Hồ Chí Minh"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Trạng thái <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="status"
-                defaultValue={campus?.status || 'Active'}
-                required
-                disabled={loading}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Active: Campus đang hoạt động | Inactive: Campus đã bị vô hiệu hóa
-              </p>
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    <Phone className="mr-1 inline h-4 w-4" />
+                    Số điện thoại <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    defaultValue={campus?.phoneNumber || ''}
+                    required
+                    disabled={loading}
+                    placeholder="VD: 028 7300 1866"
+                    onInput={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      target.value = target.value.replace(/[^0-9+\-\s()]/g, '');
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
 
-            {/* Image Upload Field */}
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                <ImageIcon className="mr-1 inline h-4 w-4" />
-                Ảnh campus {isEdit ? <span className="text-gray-500 text-xs">(giữ ảnh cũ nếu không chọn ảnh mới)</span> : <span className="text-red-500">*</span>}
-              </label>
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  disabled={loading}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-                />
-                {(imagePreview || campus?.imageUrl) && (
-                  <div className="mt-2">
-                    <p className="mb-2 text-xs text-gray-600">Preview:</p>
-                    <img
-                      src={imagePreview ?? campus?.imageUrl}
-                      alt="Preview"
-                      className="h-32 w-full rounded-lg border border-gray-200 object-cover"
-                    />
-                  </div>
-                )}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    <Mail className="mr-1 inline h-4 w-4" />
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    defaultValue={campus?.email || ''}
+                    required
+                    disabled={loading}
+                    placeholder="VD: contact@fpt.edu.vn"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  />
+                </div>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Ảnh sẽ được upload lên Cloudinary. Định dạng: JPG, JPEG, PNG, GIF, WEBP. Kích thước tối đa: 10MB
-              </p>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Trạng thái <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="status"
+                  defaultValue={campus?.status || 'Active'}
+                  required
+                  disabled={loading}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Active: Campus đang hoạt động | Inactive: Campus đã bị vô hiệu hóa
+                </p>
+              </div>
+
+              {/* Image Upload Field */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  <ImageIcon className="mr-1 inline h-4 w-4" />
+                  Ảnh campus {isEdit ? <span className="text-gray-500 text-xs">(giữ ảnh cũ nếu không chọn ảnh mới)</span> : <span className="text-red-500">*</span>}
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={loading}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                  />
+                  {(imagePreview || campus?.imageUrl) && (
+                    <div className="mt-2">
+                      <p className="mb-2 text-xs text-gray-600">Preview:</p>
+                      <img
+                        src={imagePreview ?? campus?.imageUrl}
+                        alt="Preview"
+                        className="max-h-48 w-full rounded-lg border border-gray-200 object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Ảnh sẽ được upload lên Cloudinary. Định dạng: JPG, JPEG, PNG, GIF, WEBP. Kích thước tối đa: 10MB
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="border-t border-gray-200 p-6 flex justify-end gap-3 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}

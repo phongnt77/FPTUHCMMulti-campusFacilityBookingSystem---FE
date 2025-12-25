@@ -231,9 +231,8 @@ const FacilityPage = () => {
                       <h3 className="text-xl font-bold text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">
                         {campus.name}
                       </h3>
-                      <p className="text-sm text-gray-500 mb-3">{campus.fullName}</p>
                       <p className="text-sm text-gray-600 leading-relaxed">
-                        {campus.description}
+                        {campus.fullName}
                       </p>
                     </div>
                     <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${campus.gradient} flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
