@@ -501,12 +501,31 @@ export const myBookingsApi = {
       const response = await apiFetch<BackendBookingResponse[]>(url);
       
       if (response.success && response.data) {
-        const bookings = response.data;
+        // Normalize bookings payload (API may return array or wrap in { data: [] })
+        let bookings: BackendBookingResponse[] = [];
+        if (Array.isArray(response.data)) {
+          bookings = response.data;
+        } else if (response.data && typeof response.data === 'object') {
+          const dataObj = response.data as any;
+          if (Array.isArray(dataObj.data)) {
+            bookings = dataObj.data;
+          }
+        }
         
         // Get feedbacks
         const feedbackUrl = buildUrl(API_ENDPOINTS.FEEDBACK.GET_ALL, { limit: 1000 });
         const feedbackResponse = await apiFetch<BackendFeedbackResponse[]>(feedbackUrl);
-        const feedbacks = feedbackResponse.success && feedbackResponse.data ? feedbackResponse.data : [];
+        const feedbacks = feedbackResponse.success && feedbackResponse.data
+          ? (Array.isArray(feedbackResponse.data) ? feedbackResponse.data : [])
+          : [];
+
+        // Only count feedbacks for the current user's bookings (unique by bookingId)
+        const bookingIdSet = new Set(bookings.map(b => b.bookingId));
+        const reviewedBookingIds = new Set(
+          feedbacks
+            .filter(f => bookingIdSet.has(f.bookingId))
+            .map(f => f.bookingId)
+        );
         
         // Map backend statuses to frontend statuses for stats
         const mappedBookings = bookings.map(b => mapStatus(b.status));
@@ -518,7 +537,7 @@ export const myBookingsApi = {
           finish: mappedBookings.filter(s => s === 'Finish').length,
           rejected: mappedBookings.filter(s => s === 'Rejected').length,
           cancelled: mappedBookings.filter(s => s === 'Cancelled').length,
-          feedbackGiven: feedbacks.length,
+          feedbackGiven: reviewedBookingIds.size,
         };
       }
       

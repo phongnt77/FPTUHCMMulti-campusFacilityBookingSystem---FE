@@ -25,7 +25,7 @@ import { useState, useEffect } from 'react'
 // Import icons
 import { Building2, MapPin, Phone, Mail, X, Loader2, Image as ImageIcon } from 'lucide-react'
 // Import types
-import type { Campus, CampusRequest, CampusWithImageRequest } from '../api/campusApi'
+import type { Campus, CampusWithImageRequest } from '../api/campusApi'
 
 /**
  * Interface định nghĩa props của CampusForm
@@ -38,7 +38,7 @@ import type { Campus, CampusRequest, CampusWithImageRequest } from '../api/campu
 interface CampusFormProps {
   campus: Campus | null
   onClose: () => void
-  onSave: (campusData: CampusRequest | CampusWithImageRequest) => Promise<void>
+  onSave: (campusData: CampusWithImageRequest) => Promise<void>
   loading?: boolean
 }
 
@@ -147,28 +147,21 @@ const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProp
     }
 
     try {
-      // Nếu đang tạo mới và có ảnh, sử dụng CampusWithImageRequest
-      if (!isEdit && selectedImage) {
-        const campusData: CampusWithImageRequest = {
-          name: formData.get('name')?.toString() || '',
-          address: formData.get('address')?.toString() || undefined,
-          phoneNumber: phoneNumber || undefined,
-          email: email || undefined,
-          status: (formData.get('status')?.toString() || 'Active') as 'Active' | 'Inactive',
-          image: selectedImage,
-        }
-        await onSave(campusData)
-      } else {
-        // Nếu đang chỉnh sửa hoặc không có ảnh, sử dụng CampusRequest
-        const campusData: CampusRequest = {
-          name: formData.get('name')?.toString() || '',
-          address: formData.get('address')?.toString() || '',
-          phoneNumber: phoneNumber || '',
-          email: email || '',
-          status: (formData.get('status')?.toString() || 'Active') as 'Active' | 'Inactive',
-        }
-        await onSave(campusData)
+      if (!isEdit && !selectedImage) {
+        alert('Vui lòng chọn ảnh campus')
+        return
       }
+
+      const campusData: CampusWithImageRequest = {
+        name: formData.get('name')?.toString() || '',
+        address: formData.get('address')?.toString() || undefined,
+        phoneNumber: phoneNumber || undefined,
+        email: email || undefined,
+        status: (formData.get('status')?.toString() || 'Active') as 'Active' | 'Inactive',
+        image: selectedImage ?? undefined,
+      }
+
+      await onSave(campusData)
       // Nếu thành công, parent component sẽ đóng form
     } catch (error) {
       // Error đã được xử lý trong parent component (CampusManagement)
@@ -284,37 +277,35 @@ const CampusForm = ({ campus, onClose, onSave, loading = false }: CampusFormProp
               </p>
             </div>
 
-            {/* Image Upload Field - Chỉ hiển thị khi tạo mới */}
-            {!isEdit && (
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  <ImageIcon className="mr-1 inline h-4 w-4" />
-                  Ảnh campus <span className="text-gray-500 text-xs">(tùy chọn)</span>
-                </label>
-                <div className="space-y-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    disabled={loading}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-                  />
-                  {imagePreview && (
-                    <div className="mt-2">
-                      <p className="mb-2 text-xs text-gray-600">Preview:</p>
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="h-32 w-full rounded-lg border border-gray-200 object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Ảnh sẽ được upload lên Cloudinary. Định dạng: JPG, JPEG, PNG, GIF, WEBP. Kích thước tối đa: 10MB
-                </p>
+            {/* Image Upload Field */}
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">
+                <ImageIcon className="mr-1 inline h-4 w-4" />
+                Ảnh campus {isEdit ? <span className="text-gray-500 text-xs">(giữ ảnh cũ nếu không chọn ảnh mới)</span> : <span className="text-red-500">*</span>}
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={loading}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1 disabled:bg-gray-100 disabled:cursor-not-allowed file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                />
+                {(imagePreview || campus?.imageUrl) && (
+                  <div className="mt-2">
+                    <p className="mb-2 text-xs text-gray-600">Preview:</p>
+                    <img
+                      src={imagePreview ?? campus?.imageUrl}
+                      alt="Preview"
+                      className="h-32 w-full rounded-lg border border-gray-200 object-cover"
+                    />
+                  </div>
+                )}
               </div>
-            )}
+              <p className="mt-1 text-xs text-gray-500">
+                Ảnh sẽ được upload lên Cloudinary. Định dạng: JPG, JPEG, PNG, GIF, WEBP. Kích thước tối đa: 10MB
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end gap-3">

@@ -1,4 +1,4 @@
-export type Campus = 'HCM' | 'NVH';
+export type Campus = string;
 
 export type FacilityType = 
   | 'Classroom' 
@@ -41,6 +41,8 @@ export interface Facility {
   name: string;
   type: FacilityType;
   campus: Campus;
+  campusId?: string;
+  campusName?: string;
   capacity: number;
   location: string;
   description?: string;
@@ -70,10 +72,7 @@ export interface DashboardStats {
   approvedBookings: number;
   totalFacilities: number;
   activeFacilities: number;
-  bookingsByCampus: {
-    HCM: number;
-    NVH: number;
-  };
+  bookingsByCampus: Record<string, number>;
   bookingsByType: {
     'meeting-room': number;
     'lab-room': number;

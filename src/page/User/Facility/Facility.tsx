@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Users, Clock, Search, Building2, FlaskConical, Trophy, ChevronRight, Sparkles } from 'lucide-react';
-import type { Facility, Campus, FacilityType } from '../../../types';
+import type { Facility, FacilityType } from '../../../types';
 import { userFacilityApi, type CampusInfo } from './api/api';
 
 const FacilityPage = () => {
@@ -9,14 +9,13 @@ const FacilityPage = () => {
   const [loading, setLoading] = useState(false);
   const [campuses, setCampuses] = useState<CampusInfo[]>([]);
   const [campusesLoading, setCampusesLoading] = useState(true);
-  const [selectedCampus, setSelectedCampus] = useState<Campus | null>(null);
+  const [selectedCampusId, setSelectedCampusId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<FacilityType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [campusCounts, setCampusCounts] = useState<{ HCM: number; NVH: number }>({ HCM: 0, NVH: 0 });
+  const [campusCounts, setCampusCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadCampuses();
-    loadCampusCounts();
   }, []);
 
   const loadCampuses = async () => {
@@ -24,6 +23,9 @@ const FacilityPage = () => {
     try {
       const data = await userFacilityApi.getCampusesInfo();
       setCampuses(data);
+
+      const counts = await userFacilityApi.getFacilitiesCountByCampus();
+      setCampusCounts(counts);
     } catch (error) {
       console.error('Error loading campuses:', error);
     } finally {
@@ -32,23 +34,18 @@ const FacilityPage = () => {
   };
 
   useEffect(() => {
-    if (selectedCampus) {
+    if (selectedCampusId) {
       loadFacilities();
     }
-  }, [selectedCampus, selectedType, searchQuery]);
-
-  const loadCampusCounts = async () => {
-    const counts = await userFacilityApi.getFacilitiesCountByCampus();
-    setCampusCounts(counts);
-  };
+  }, [selectedCampusId, selectedType, searchQuery]);
 
   const loadFacilities = useCallback(async () => {
-    if (!selectedCampus) return;
+    if (!selectedCampusId) return;
     
     setLoading(true);
     try {
       const data = await userFacilityApi.getAvailableFacilities({
-        campus: selectedCampus,
+        campusId: selectedCampusId,
         type: selectedType !== 'all' ? selectedType : undefined,
         searchQuery: searchQuery || undefined,
       });
@@ -58,16 +55,16 @@ const FacilityPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedCampus, selectedType, searchQuery]);
+  }, [selectedCampusId, selectedType, searchQuery]);
 
-  const handleCampusSelect = (campus: Campus) => {
-    setSelectedCampus(campus);
+  const handleCampusSelect = (campusId: string) => {
+    setSelectedCampusId(campusId);
     setSelectedType('all');
     setSearchQuery('');
   };
 
   const handleBackToCampusSelection = () => {
-    setSelectedCampus(null);
+    setSelectedCampusId(null);
     setFacilities([]);
   };
 
@@ -147,12 +144,12 @@ const FacilityPage = () => {
     return colors[type] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', accent: 'bg-gray-500' };
   };
 
-  const selectedCampusInfo = selectedCampus 
-    ? campuses.find(c => c.id === selectedCampus) 
+  const selectedCampusInfo = selectedCampusId 
+    ? campuses.find(c => c.id === selectedCampusId) 
     : null;
 
   // Campus Selection View
-  if (!selectedCampus) {
+  if (!selectedCampusId) {
   return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
         {/* Header Section */}
@@ -249,7 +246,7 @@ const FacilityPage = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <Building2 className="w-4 h-4 text-gray-400" />
                       <span className="font-semibold text-gray-900">
-                        {campusCounts[campus.id]}
+                        {campusCounts[campus.id] ?? 0}
                       </span>
                       <span className="text-gray-500">cơ sở khả dụng</span>
                     </div>

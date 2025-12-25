@@ -254,12 +254,86 @@ const NotificationDropdown = ({ isOpen, onClose }: NotificationDropdownProps) =>
 
   // Check if message should show expand button (if message is longer than ~100 characters)
   const shouldShowExpand = (message: string) => {
-    return message.length > 100;
+    // Line-clamp truncates by rendered lines, not characters.
+    // Use a conservative heuristic so users can expand messages that may wrap.
+    const normalized = message?.trim() ?? '';
+    if (!normalized) return false;
+    return normalized.includes('\n') || normalized.includes('\r') || normalized.length > 60;
   };
 
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const parseBackendDateTime = (value: string | null | undefined): Date | null => {
+      if (!value) return null;
+      const text = String(value).trim();
+      if (!text) return null;
+
+      try {
+        // Format 1: dd/MM/yyyy HH:mm:ss or dd/MM/yyyy HH:mm
+        const ddMMyyyyTime = text.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s*$/);
+        if (ddMMyyyyTime) {
+          const [, day, month, year, hours, minutes, seconds] = ddMMyyyyTime;
+          const d = new Date(
+            Number(year),
+            Number(month) - 1,
+            Number(day),
+            Number(hours),
+            Number(minutes),
+            Number(seconds ?? 0)
+          );
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        // Format 2: dd/MM/yyyy
+        const ddMMyyyy = text.match(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s*$/);
+        if (ddMMyyyy) {
+          const [, day, month, year] = ddMMyyyy;
+          const d = new Date(Number(year), Number(month) - 1, Number(day));
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        // Format 3: yyyy-MM-ddTHH:mm:ss (ISO-ish)
+        const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (isoMatch) {
+          const [, year, month, day, hours, minutes, seconds] = isoMatch;
+          const d = new Date(
+            Number(year),
+            Number(month) - 1,
+            Number(day),
+            Number(hours),
+            Number(minutes),
+            Number(seconds ?? 0)
+          );
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        // Format 4: yyyy-MM-dd HH:mm:ss
+        const yyyyMMddTime = text.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (yyyyMMddTime) {
+          const [, year, month, day, hours, minutes, seconds] = yyyyMMddTime;
+          const d = new Date(
+            Number(year),
+            Number(month) - 1,
+            Number(day),
+            Number(hours),
+            Number(minutes),
+            Number(seconds ?? 0)
+          );
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        // Fallback: native parsing
+        const d = new Date(text);
+        return Number.isNaN(d.getTime()) ? null : d;
+      } catch {
+        return null;
+      }
+    };
+
+    const date = parseBackendDateTime(dateString);
+    if (!date) {
+      return dateString || 'N/A';
+    }
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);

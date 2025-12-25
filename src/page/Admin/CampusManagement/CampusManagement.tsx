@@ -22,8 +22,8 @@ import { useState, useEffect, useCallback } from 'react'
 // Import icons từ lucide-react
 import { Plus, Edit2, Trash2, Loader2, AlertCircle, Building2 } from 'lucide-react'
 // Import types và API functions
-import type { Campus, CampusRequest, CampusWithImageRequest, GetCampusesParams } from './api/campusApi'
-import { getCampuses, createCampus, createCampusWithImage, updateCampus, deleteCampus } from './api/campusApi'
+import type { Campus, CampusWithImageRequest, GetCampusesParams } from './api/campusApi'
+import { getCampuses, createCampusWithImage, updateCampusWithImage, deleteCampus } from './api/campusApi'
 // Import toast hook
 import { useToast } from '../../../components/toast'
 // Import components
@@ -165,38 +165,14 @@ const CampusManagement = () => {
    * 
    * @param {CampusRequest | CampusWithImageRequest} campusData - Dữ liệu campus cần lưu
    */
-  const handleSave = async (campusData: CampusRequest | CampusWithImageRequest) => {
+  const handleSave = async (campusData: CampusWithImageRequest) => {
     setFormLoading(true)
 
     try {
       if (editingCampus) {
-        // Update campus: Gọi API update với campusId, data, và status
-        // Chuyển đổi CampusWithImageRequest sang CampusRequest nếu cần
-        const updateData: CampusRequest = {
-          name: campusData.name,
-          address: campusData.address || '',
-          phoneNumber: campusData.phoneNumber || '',
-          email: campusData.email || '',
-          status: campusData.status || 'Active',
-        }
-        await updateCampus(editingCampus.campusId, updateData, updateData.status)
+        await updateCampusWithImage(editingCampus.campusId, campusData)
       } else {
-        // Create new campus
-        // Kiểm tra xem có ảnh không (CampusWithImageRequest có image property)
-        if ('image' in campusData && campusData.image) {
-          // Có ảnh: Sử dụng API với image upload
-          await createCampusWithImage(campusData as CampusWithImageRequest)
-        } else {
-          // Không có ảnh: Sử dụng API thông thường
-          const createData: CampusRequest = {
-            name: campusData.name,
-            address: campusData.address || '',
-            phoneNumber: campusData.phoneNumber || '',
-            email: campusData.email || '',
-            status: campusData.status || 'Active',
-          }
-          await createCampus(createData)
-        }
+        await createCampusWithImage(campusData)
       }
 
       // Thành công: Đóng form, reset state, hiển thị success message, và reload danh sách

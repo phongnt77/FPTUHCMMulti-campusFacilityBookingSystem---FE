@@ -1,5 +1,5 @@
 import { API_BASE_URL, API_ENDPOINTS, apiFetch, buildUrl } from '../../../../services/api.config';
-import type { Facility, Campus, FacilityType } from '../../../../types';
+import type { Facility, FacilityType } from '../../../../types';
 
 export interface TimeSlot {
   id: string;
@@ -99,7 +99,9 @@ const parseBackendDateTime = (value: string): Date | null => {
 const mapFacilityResponse = (f: FacilityResponse): Facility => ({
   id: f.facilityId,
   name: f.name,
-  campus: (f.campusName?.includes('NVH') || f.campusName?.includes('Nhà Văn Hóa') || f.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
+  campus: f.campusName || f.campusId,
+  campusId: f.campusId,
+  campusName: f.campusName,
   type: mapFacilityType(f.typeName),
   capacity: f.capacity,
   location: `${f.roomNumber}, Tầng ${f.floorNumber}`,
@@ -174,9 +176,6 @@ const generateTimeSlots = (date: string, bookedSlots: string[] = [], minimumBook
   const isToday = baseDateOnly.getTime() === todayOnly.getTime();   // Là hôm nay?
   
   // Lưu giờ hiện tại (dùng cho debug)
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  
   // ============================================
   // BƯỚC 3: TẠO 14 SLOTS (7:00 - 21:00)
   // Operating hours: 7:00 - 21:00

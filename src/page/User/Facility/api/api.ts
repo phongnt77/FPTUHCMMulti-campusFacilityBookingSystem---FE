@@ -1,5 +1,5 @@
 import { API_BASE_URL, API_ENDPOINTS, apiFetch, buildUrl } from '../../../../services/api.config';
-import type { Facility, Campus, FacilityType } from '../../../../types';
+import type { Facility, FacilityType } from '../../../../types';
 
 // Backend response types
 export interface CampusResponse {
@@ -10,12 +10,6 @@ export interface CampusResponse {
   phoneNumber?: string;
   email?: string;
   status: string;
-}
-
-interface FacilityTypeResponse {
-  typeId: string;
-  name: string;
-  description: string;
 }
 
 interface FacilityResponse {
@@ -35,7 +29,7 @@ interface FacilityResponse {
 }
 
 export interface FacilityFilters {
-  campus?: Campus;
+  campusId?: string;
   type?: FacilityType;
   searchQuery?: string;
 }
@@ -44,7 +38,9 @@ export interface FacilityFilters {
 const mapFacilityResponse = (f: FacilityResponse): Facility => ({
   id: f.facilityId,
   name: f.name,
-  campus: (f.campusName?.includes('NVH') || f.campusName?.includes('Nhà Văn Hóa') || f.campusName?.includes('Sinh Viên') ? 'NVH' : 'HCM') as Campus,
+  campus: f.campusName || f.campusId,
+  campusId: f.campusId,
+  campusName: f.campusName,
   type: mapFacilityType(f.typeName),
   capacity: f.capacity,
   location: `${f.roomNumber}, Tầng ${f.floorNumber}`,
@@ -70,18 +66,9 @@ const mapFacilityType = (typeName: string): FacilityType => {
   return typeMap[typeName] || 'Classroom';
 };
 
-// Map campusId to Campus type
-const mapCampusIdToCampus = (campusId: string): Campus => {
-  // C0001 = HCM, C0002 = NVH
-  if (campusId === 'C0001') return 'HCM';
-  if (campusId === 'C0002') return 'NVH';
-  // Fallback: check if name contains NVH
-  return 'HCM'; // Default to HCM
-};
-
 // Map CampusResponse to CampusInfo
 export interface CampusInfo {
-  id: Campus;
+  id: string;
   name: string;
   fullName: string;
   description: string;
@@ -91,34 +78,25 @@ export interface CampusInfo {
 }
 
 export const mapCampusResponse = (c: CampusResponse): CampusInfo => {
-  const campusId = mapCampusIdToCampus(c.campusId);
-  
-  // Default values based on campus
-  const defaults: Record<Campus, { gradient: string; imageUrl: string; description: string; fullName: string }> = {
-    HCM: {
-      gradient: 'from-orange-500 to-amber-600',
-      imageUrl: '/images/HCM.webp',
-      description: 'Campus chính tại Quận 9 với đầy đủ cơ sở vật chất hiện đại',
-      fullName: 'FPT University HCMC - Quận 9'
-    },
-    NVH: {
-      gradient: 'from-violet-500 to-purple-600',
-      imageUrl: '/images/nvh.jpg',
-      description: 'Campus NVH với không gian học tập đa dạng',
-      fullName: 'FPT University NVH'
-    }
-  };
-  
-  const defaultValues = defaults[campusId];
-  
+  const gradients = [
+    'from-orange-500 to-amber-600',
+    'from-violet-500 to-purple-600',
+    'from-emerald-500 to-teal-600',
+    'from-blue-500 to-indigo-600',
+  ];
+
+  const gradientIndex = Math.abs(
+    (c.campusId ?? '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  ) % gradients.length;
+
   return {
-    id: campusId,
-    name: c.name || (campusId === 'HCM' ? 'HCM Campus' : 'NVH Campus'),
-    fullName: c.address || defaultValues.fullName,
-    description: defaultValues.description,
-    gradient: defaultValues.gradient,
-    imageUrl: c.imageUrl || defaultValues.imageUrl,
-    imageAlt: `FPTU ${c.name || campusId} Campus`
+    id: c.campusId,
+    name: c.name,
+    fullName: c.address || c.name,
+    description: c.address || '',
+    gradient: gradients[gradientIndex],
+    imageUrl: c.imageUrl || '',
+    imageAlt: `${c.name} Campus`
   };
 };
 
@@ -134,6 +112,10 @@ export const userFacilityApi = {
       if (filters?.searchQuery) {
         params.name = filters.searchQuery;
       }
+
+      if (filters?.campusId) {
+        params.campusId = filters.campusId;
+      }
       
       const url = buildUrl(API_ENDPOINTS.FACILITY.GET_ALL, params);
       console.log('Fetching facilities from:', url);
@@ -146,12 +128,8 @@ export const userFacilityApi = {
         let facilities = response.data
           .filter(f => f.status === 'Available')
           .map(mapFacilityResponse);
-        
+
         // Apply client-side filters
-        if (filters?.campus) {
-          facilities = facilities.filter(f => f.campus === filters.campus);
-        }
-        
         if (filters?.type) {
           facilities = facilities.filter(f => f.type === filters.type);
         }
@@ -221,24 +199,23 @@ export const userFacilityApi = {
   },
 
   // Get facilities count by campus - API ONLY
-  getFacilitiesCountByCampus: async (): Promise<{ HCM: number; NVH: number }> => {
+  getFacilitiesCountByCampus: async (): Promise<Record<string, number>> => {
     try {
-      const url = buildUrl(API_ENDPOINTS.FACILITY.GET_ALL, { limit: 1000 });
+      const url = buildUrl(API_ENDPOINTS.FACILITY.GET_ALL, { limit: 10000 });
       const response = await apiFetch<FacilityResponse[]>(url);
-      
-      if (response.success && response.data) {
-        // Filter only Available facilities
-        const facilities = response.data.filter(f => f.status === 'Available');
-        return {
-          HCM: facilities.filter(f => !f.campusName?.includes('NVH') && !f.campusName?.includes('Nhà Văn Hóa') && !f.campusName?.includes('Sinh Viên')).length,
-          NVH: facilities.filter(f => f.campusName?.includes('NVH') || f.campusName?.includes('Nhà Văn Hóa') || f.campusName?.includes('Sinh Viên')).length,
-        };
+
+      if (!response.success || !response.data) return {};
+
+      const counts: Record<string, number> = {};
+      for (const facility of response.data) {
+        if (facility.status !== 'Available') continue;
+        counts[facility.campusId] = (counts[facility.campusId] ?? 0) + 1;
       }
-      
-      return { HCM: 0, NVH: 0 };
+
+      return counts;
     } catch (error) {
       console.error('Error fetching facility count:', error);
-      return { HCM: 0, NVH: 0 };
+      return {};
     }
   }
 };

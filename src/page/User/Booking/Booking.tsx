@@ -445,7 +445,7 @@ const BookingPage = () => {
                 {facility.name}
               </h1>
               <p className="text-white/80 text-sm">
-                {getFacilityTypeLabel(facility.type)} • {facility.campus} Campus
+                {getFacilityTypeLabel(facility.type)} • {(facility.campusName ?? facility.campusId ?? facility.campus)}
               </p>
             </div>
           </div>

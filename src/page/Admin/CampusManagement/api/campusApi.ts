@@ -1,4 +1,4 @@
-import { apiClient, handleApiError, createFormDataConfig } from '../../../../services/apiClient';
+import { apiClient, handleApiError } from '../../../../services/apiClient';
 import type { PaginatedResponse, ActionResponse, DeleteResponse } from '../../../../types/api';
 
 // Interface cho Campus từ API response
@@ -13,9 +13,6 @@ export interface Campus {
   createdAt: string; // ISO 8601 format
   updatedAt: string; // ISO 8601 format
 }
-
-// Import Pagination from shared types
-import type { Pagination } from '../../../../types/api';
 
 // Interface cho Create/Update Campus Request
 export interface CampusRequest {
@@ -184,6 +181,10 @@ export const createCampusWithImage = async (
   campusData: CampusWithImageRequest
 ): Promise<CampusActionResponse> => {
   try {
+    if (!campusData.image) {
+      throw new Error('Vui lòng chọn ảnh campus');
+    }
+
     // Tạo FormData object
     const formData = new FormData();
     
@@ -206,10 +207,8 @@ export const createCampusWithImage = async (
       formData.append('status', campusData.status);
     }
     
-    // Thêm file ảnh nếu có
-    if (campusData.image) {
-      formData.append('image', campusData.image);
-    }
+    // Thêm file ảnh (bắt buộc)
+    formData.append('image', campusData.image);
 
     // Gửi request với FormData
     // Interceptor sẽ tự động xóa Content-Type header khi detect FormData
@@ -222,6 +221,55 @@ export const createCampusWithImage = async (
     return response.data;
   } catch (error) {
     throw handleApiError(error, 'Lỗi khi tạo campus với ảnh');
+  }
+};
+
+/**
+ * Cập nhật campus kèm upload ảnh lên Cloudinary
+ * @param campusId - ID của campus cần cập nhật
+ * @param campusData - Thông tin campus cần cập nhật (có image bắt buộc)
+ * @returns Promise với campus đã được cập nhật
+ * @description
+ * - PUT /api/campuses/{id}/with-image
+ * - Content-Type: multipart/form-data
+ * - Ảnh sẽ được upload lên Cloudinary và ImageUrl sẽ lưu secure_url
+ */
+export const updateCampusWithImage = async (
+  campusId: string,
+  campusData: CampusWithImageRequest
+): Promise<CampusActionResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('name', campusData.name);
+
+    if (campusData.address) {
+      formData.append('address', campusData.address);
+    }
+
+    if (campusData.phoneNumber) {
+      formData.append('phoneNumber', campusData.phoneNumber);
+    }
+
+    if (campusData.email) {
+      formData.append('email', campusData.email);
+    }
+
+    if (campusData.status) {
+      formData.append('status', campusData.status);
+    }
+
+    if (campusData.image) {
+      formData.append('image', campusData.image);
+    }
+
+    const response = await apiClient.put<CampusActionResponse>(
+      `/api/campuses/${campusId}/with-image`,
+      formData
+    );
+
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error, 'Lỗi khi cập nhật campus với ảnh');
   }
 };
 
