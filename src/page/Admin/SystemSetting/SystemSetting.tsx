@@ -41,8 +41,7 @@ const SystemSetting = () => {
     minimumBookingHoursBeforeStart: 3,
     checkInMinutesBeforeStart: 15,
     checkInMinutesAfterStart: 15,
-    checkoutMinRatio: 0,
-    checkOutMinutesAfterCheckIn: 0,
+    checkoutMinMinutesAfterCheckIn: 0,
   })
   
   const [loading, setLoading] = useState(true)
@@ -84,8 +83,7 @@ const SystemSetting = () => {
         settings.minimumBookingHoursBeforeStart !== originalSettings.minimumBookingHoursBeforeStart ||
         settings.checkInMinutesBeforeStart !== originalSettings.checkInMinutesBeforeStart ||
         settings.checkInMinutesAfterStart !== originalSettings.checkInMinutesAfterStart ||
-        settings.checkoutMinRatio !== originalSettings.checkoutMinRatio ||
-        settings.checkOutMinutesAfterCheckIn !== originalSettings.checkOutMinutesAfterCheckIn
+        settings.checkoutMinMinutesAfterCheckIn !== originalSettings.checkoutMinMinutesAfterCheckIn
       setHasChanges(changed)
     }
   }, [settings, originalSettings])
@@ -110,8 +108,7 @@ const SystemSetting = () => {
       settings.minimumBookingHoursBeforeStart < 0 ||
       settings.checkInMinutesBeforeStart < 0 ||
       settings.checkInMinutesAfterStart < 0 ||
-      settings.checkoutMinRatio < 0 ||
-      settings.checkOutMinutesAfterCheckIn < 0
+      settings.checkoutMinMinutesAfterCheckIn < 0
     ) {
       showError('Tất cả các giá trị phải lớn hơn hoặc bằng 0')
       return
@@ -125,8 +122,7 @@ const SystemSetting = () => {
         minimumBookingHoursBeforeStart: settings.minimumBookingHoursBeforeStart,
         checkInMinutesBeforeStart: settings.checkInMinutesBeforeStart,
         checkInMinutesAfterStart: settings.checkInMinutesAfterStart,
-        checkoutMinRatio: settings.checkoutMinRatio,
-        checkOutMinutesAfterCheckIn: settings.checkOutMinutesAfterCheckIn,
+        checkoutMinMinutesAfterCheckIn: settings.checkoutMinMinutesAfterCheckIn,
       })
 
       if (response.success && response.data) {
@@ -296,33 +292,8 @@ const SystemSetting = () => {
                   id="checkOutAfterCheckIn"
                   min="0"
                   step="1"
-                  value={settings.checkOutMinutesAfterCheckIn}
-                  onChange={(e) => handleChange('checkOutMinutesAfterCheckIn', parseInt(e.target.value) || 0)}
-                  className="w-32 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
-                />
-                <span className="text-sm text-gray-600">phút</span>
-              </div>
-            </div>
-
-            {/* Checkout Min Ratio */}
-            <div>
-              <label
-                htmlFor="checkoutMinRatio"
-                className="block text-sm font-semibold text-gray-900 mb-2"
-              >
-                Thời lượng tối thiểu để được check-out
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                Thời lượng tối thiểu (phút) thời lượng booking phải được sử dụng để cho phép check-out.
-              </p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="number"
-                  id="checkoutMinRatio"
-                  min="0"
-                  step="1"
-                  value={settings.checkoutMinRatio}
-                  onChange={(e) => handleChange('checkoutMinRatio', parseInt(e.target.value) || 0)}
+                  value={settings.checkoutMinMinutesAfterCheckIn}
+                  onChange={(e) => handleChange('checkoutMinMinutesAfterCheckIn', parseInt(e.target.value) || 0)}
                   className="w-32 rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none ring-orange-500 focus:border-orange-400 focus:ring-1"
                 />
                 <span className="text-sm text-gray-600">phút</span>

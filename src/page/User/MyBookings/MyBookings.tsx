@@ -67,7 +67,7 @@ const MyBookingsPage = () => {
     // Update thời gian mỗi 30 giây
     const interval = setInterval(() => {
       setCurrentTime(new Date());
-    }, 30000); // 30 seconds
+    }, 1000); // 30 seconds
 
     return () => clearInterval(interval);
   }, []);

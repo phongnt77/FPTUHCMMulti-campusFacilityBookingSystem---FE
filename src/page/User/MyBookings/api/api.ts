@@ -287,13 +287,27 @@ export const myBookingsApi = {
   getSystemSettings: async (): Promise<SystemSettings | null> => {
     try {
       const url = `${API_BASE_URL}${API_ENDPOINTS.SYSTEM_SETTINGS.GET}`;
-      const response = await apiFetch<SystemSettings & { minimumBookingHoursBeforeStart?: number; checkoutMinRatio?: number }>(url);
+      const response = await apiFetch<
+        SystemSettings & {
+          minimumBookingHoursBeforeStart?: number;
+          checkInMinutesBeforeStart?: number;
+          checkInMinutesAfterStart?: number;
+          checkoutMinMinutesAfterCheckIn?: number;
+          // legacy/old naming (kept for backward compatibility)
+          checkOutMinutesAfterCheckIn?: number;
+        }
+      >(url);
       
       if (response.success && response.data) {
+        const minAfterCheckIn =
+          (response.data as any).checkoutMinMinutesAfterCheckIn ??
+          (response.data as any).checkOutMinutesAfterCheckIn ??
+          0;
+
         return {
           checkInMinutesBeforeStart: response.data.checkInMinutesBeforeStart || 15,
           checkInMinutesAfterStart: response.data.checkInMinutesAfterStart || 15,
-          checkOutMinutesAfterCheckIn: response.data.checkOutMinutesAfterCheckIn || 0,
+          checkOutMinutesAfterCheckIn: Number(minAfterCheckIn) || 0,
         };
       }
       

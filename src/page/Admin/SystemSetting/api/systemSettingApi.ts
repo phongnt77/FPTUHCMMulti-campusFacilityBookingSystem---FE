@@ -6,8 +6,7 @@ export interface SystemSettings {
   minimumBookingHoursBeforeStart: number;
   checkInMinutesBeforeStart: number;
   checkInMinutesAfterStart: number;
-  checkoutMinRatio: number;
-  checkOutMinutesAfterCheckIn: number;
+  checkoutMinMinutesAfterCheckIn: number;
 }
 
 // Interface cho API Response
@@ -20,8 +19,7 @@ export interface UpdateSystemSettingsRequest {
   minimumBookingHoursBeforeStart?: number;
   checkInMinutesBeforeStart?: number;
   checkInMinutesAfterStart?: number;
-  checkoutMinRatio?: number;
-  checkOutMinutesAfterCheckIn?: number;
+  checkoutMinMinutesAfterCheckIn?: number;
 }
 
 /**
